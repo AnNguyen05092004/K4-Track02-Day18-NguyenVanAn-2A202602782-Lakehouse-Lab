@@ -5,93 +5,104 @@
 # ---
 
 # %% [markdown]
-# # NB3 — Time Travel + MERGE Upsert
+# # NB3 — Time Travel + MERGE Upsert (lightweight)
 #
-# **Mục tiêu:** demo 4 demo-block tasks from slide line ~700.
-# Maps to deliverable bullet 3.
+# Maps to slide §3 + deliverable bullet 3.
+#
+# > Spark equivalent: `option("versionAsOf", N)` ↔ `DeltaTable(path, version=N)`
+# >                   `MERGE INTO ...`           ↔ `dt.merge(source, predicate)`
 
 # %%
-import sys, time, random
-sys.path.append("/workspace/scripts")
-from spark_session import get_spark
-from delta.tables import DeltaTable
-from pyspark.sql import functions as F
+import sys, time, os
+sys.path.insert(0, "/workspace/scripts" if os.path.exists("/workspace") else "../scripts")
+import polars as pl
+import pyarrow as pa
+from deltalake import DeltaTable, write_deltalake
+from lakehouse import path, reset
 
-spark = get_spark("nb3_time_travel")
-path = "s3a://lakehouse/customers_tt"
+table_path = path("scratch", "customers_tt")
+reset(table_path)
 
 # %% [markdown]
 # ## 1. Build version history
-# v0: initial 100K customers · v1: schema add · v2: MERGE upsert 100K · v3: bad data ingest
+# v0: initial 100K · v1: schema add · v2: MERGE upsert · v3: bad data
 
 # %%
-v0 = spark.range(100_000).select(
-    F.col("id").alias("customer_id"),
-    F.lit("active").alias("status"),
-    (F.col("id") % 1000).cast("int").alias("score"),
-)
-v0.write.format("delta").mode("overwrite").save(path)             # v0
+# v0 — initial load
+v0 = pl.DataFrame({
+    "customer_id": list(range(100_000)),
+    "status":      ["active"] * 100_000,
+    "score":       [i % 1000 for i in range(100_000)],
+})
+write_deltalake(table_path, v0.to_arrow(), mode="overwrite")
 
-# v1 — add column
-df1 = (spark.read.format("delta").load(path)
-       .withColumn("tier", F.when(F.col("score") > 800, "gold").otherwise("silver")))
-df1.write.format("delta").mode("overwrite").option("overwriteSchema", "true").save(path)  # v1
+# v1 — add `tier` column (schema evolution)
+v1 = (pl.from_arrow(DeltaTable(table_path).to_pyarrow_table())
+        .with_columns(
+            pl.when(pl.col("score") > 800).then(pl.lit("gold")).otherwise(pl.lit("silver")).alias("tier")
+        ))
+write_deltalake(table_path, v1.to_arrow(), mode="overwrite", schema_mode="overwrite")
 
-# v2 — MERGE upsert 100K
-updates = spark.range(50_000, 150_000).select(
-    F.col("id").alias("customer_id"),
-    F.lit("vip").alias("status"),
-    F.lit(999).alias("score"),
-    F.lit("platinum").alias("tier"),
-)
-target = DeltaTable.forPath(spark, path)
+# v2 — MERGE upsert 100K (50K updates, 50K inserts)
+updates = pl.DataFrame({
+    "customer_id": list(range(50_000, 150_000)),
+    "status":      ["vip"] * 100_000,
+    "score":       [999] * 100_000,
+    "tier":        ["platinum"] * 100_000,
+})
 t0 = time.time()
-(target.alias("t").merge(updates.alias("s"), "t.customer_id = s.customer_id")
-       .whenMatchedUpdateAll()
-       .whenNotMatchedInsertAll()
-       .execute())                                                # v2
+(DeltaTable(table_path)
+    .merge(source=updates.to_arrow(),
+           predicate="t.customer_id = s.customer_id",
+           source_alias="s", target_alias="t")
+    .when_matched_update_all()
+    .when_not_matched_insert_all()
+    .execute())
 print(f"MERGE 100K rows: {time.time()-t0:.2f}s")
 
 # v3 — simulate bad data
-bad = spark.range(50).select(F.col("id").alias("customer_id"),
-                              F.lit(None).cast("string").alias("status"),
-                              F.lit(-1).alias("score"),
-                              F.lit("UNKNOWN").alias("tier"))
-bad.write.format("delta").mode("append").save(path)               # v3
+bad = pl.DataFrame({
+    "customer_id": list(range(50)),
+    "status":      [None] * 50,
+    "score":       [-1] * 50,
+    "tier":        ["UNKNOWN"] * 50,
+}, schema={"customer_id": pl.Int64, "status": pl.Utf8, "score": pl.Int64, "tier": pl.Utf8})
+write_deltalake(table_path, bad.to_arrow(), mode="append")
 
 # %% [markdown]
-# ## 2. DESCRIBE HISTORY — audit trail
+# ## 2. history() — audit trail
 
 # %%
-spark.sql(f"DESCRIBE HISTORY delta.`{path}`").select(
-    "version", "timestamp", "operation", "operationMetrics"
-).show(truncate=False)
+for h in DeltaTable(table_path).history():
+    print(f"  v{h['version']:>2}  {h['operation']:<25}  metrics={h.get('operationMetrics', {})}")
 
 # %% [markdown]
-# ## 3. Time travel queries
+# ## 3. Time-travel queries
 
 # %%
-print("v0:", spark.read.format("delta").option("versionAsOf", 0).load(path).count())
-print("v1 schema:", spark.read.format("delta").option("versionAsOf", 1).load(path).columns)
+v0_count = DeltaTable(table_path, version=0).to_pyarrow_table().num_rows
+v1_cols  = DeltaTable(table_path, version=1).schema().to_pyarrow().names
+print(f"v0 row count: {v0_count}")
+print(f"v1 schema:    {v1_cols}")
 
 # %% [markdown]
-# ## 4. RESTORE bad version
+# ## 4. RESTORE bad version (rollback)
 
 # %%
 t0 = time.time()
-DeltaTable.forPath(spark, path).restoreToVersion(2)
-print(f"RESTORE: {time.time()-t0:.2f}s   (target < 30s)")
+dt = DeltaTable(table_path)
+dt.restore(2)  # creates a new version with v2's contents
+print(f"RESTORE → v2: {time.time()-t0:.2f}s   (target < 30s)")
 
 # Verify the bad rows are gone
-bad_count = (spark.read.format("delta").load(path)
-             .where("score < 0").count())
+import duckdb
+bad_count = duckdb.sql(
+    f"SELECT count(*) FROM delta_scan('{table_path}') WHERE score < 0"
+).fetchone()[0]
 print(f"Rows with score<0 after restore: {bad_count}  (expected 0)")
 
 # %% [markdown]
 # ## ✅ Deliverable check
-# - [ ] DESCRIBE HISTORY shows ≥ 5 versions (incl. RESTORE itself)
-# - [ ] MERGE 100K finished in < 60s
+# - [ ] history() shows ≥ 5 versions (incl. RESTORE itself)
+# - [ ] MERGE 100K finished in < 60s (likely < 5s on lightweight path)
 # - [ ] RESTORE finished in < 30s and removed bad rows
-
-# %%
-spark.stop()

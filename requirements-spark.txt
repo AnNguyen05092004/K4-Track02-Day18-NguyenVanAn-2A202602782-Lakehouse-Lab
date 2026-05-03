@@ -1,5 +1,3 @@
-# Lightweight (default) path — pure Python, no JVM, no Docker.
-# Total install ~80 MB, boots in seconds.
 deltalake==0.21.0
 duckdb==1.1.3
 polars==1.13.1

@@ -5,126 +5,113 @@
 # ---
 
 # %% [markdown]
-# # NB4 — Medallion Pipeline (Bronze → Silver → Gold)
+# # NB4 — Medallion Pipeline (Bronze → Silver → Gold), lightweight
 #
 # **Use case:** LLM observability — exact schema from slide §6 medallion frame.
 # Maps to deliverable bullet 4 (the Milestone-1 Lakehouse artifact).
 #
-# Pre-req: ran `python /workspace/scripts/generate_data.py` (writes Bronze).
+# Pre-req: ran `make data` (or `python scripts/generate_data_lite.py`).
 
 # %%
-import sys
-sys.path.append("/workspace/scripts")
-from spark_session import get_spark
-from pyspark.sql import functions as F, types as T
-from delta.tables import DeltaTable
+import sys, os
+sys.path.insert(0, "/workspace/scripts" if os.path.exists("/workspace") else "../scripts")
+import polars as pl
+import duckdb
+from deltalake import DeltaTable, write_deltalake
+from lakehouse import path, reset
 
-spark = get_spark("nb4_medallion")
-
-BRONZE = "s3a://bronze/llm_calls_raw"
-SILVER = "s3a://silver/llm_calls"
-GOLD   = "s3a://gold/llm_daily_metrics"
+BRONZE = path("bronze", "llm_calls_raw")
+SILVER = path("silver", "llm_calls")
+GOLD   = path("gold",   "llm_daily_metrics")
 
 # %% [markdown]
 # ## Bronze — verify raw is loaded
 
 # %%
-bronze = spark.read.format("delta").load(BRONZE)
-print("Bronze rows:", bronze.count())
-bronze.printSchema()
-bronze.show(2, truncate=80)
+bronze_n = DeltaTable(BRONZE).to_pyarrow_table().num_rows
+print(f"Bronze rows: {bronze_n:,}")
+print(pl.from_arrow(DeltaTable(BRONZE).to_pyarrow_table().slice(0, 2)))
 
 # %% [markdown]
 # ## Silver — parse, validate, dedup
 #
-# Rules: drop rows with malformed JSON, dedupe by `request_id`, project typed columns.
+# Rules: drop malformed JSON, dedupe by `request_id`, project typed columns.
 
 # %%
-parsed_schema = T.StructType([
-    T.StructField("model", T.StringType()),
-    T.StructField("user_id", T.StringType()),
-    T.StructField("usage", T.StructType([
-        T.StructField("input", T.IntegerType()),
-        T.StructField("output", T.IntegerType()),
-    ])),
-    T.StructField("latency_ms", T.IntegerType()),
-    T.StructField("status", T.StringType()),
-])
+reset(SILVER)
 
-silver_df = (
-    bronze
-    .withColumn("p", F.from_json("raw_json", parsed_schema))
-    .where(F.col("p").isNotNull())
-    .select(
-        "request_id",
-        "ts",
-        F.col("p.model").alias("model"),
-        F.col("p.user_id").alias("user_id"),
-        F.col("p.usage.input").alias("prompt_tokens"),
-        F.col("p.usage.output").alias("completion_tokens"),
-        F.col("p.latency_ms").alias("latency_ms"),
-        F.col("p.status").alias("status"),
-        F.to_date("ts").alias("date"),
+# DuckDB does the JSON parse + dedup in one query — Polars also works,
+# DuckDB just has nicer JSON syntax for this case.
+silver_arrow = duckdb.sql(f"""
+    WITH parsed AS (
+      SELECT
+        request_id,
+        ts,
+        CAST(ts AS DATE)                            AS date,
+        json_extract_string(raw_json, '$.model')          AS model,
+        json_extract_string(raw_json, '$.user_id')        AS user_id,
+        CAST(json_extract(raw_json, '$.usage.input')  AS INTEGER) AS prompt_tokens,
+        CAST(json_extract(raw_json, '$.usage.output') AS INTEGER) AS completion_tokens,
+        CAST(json_extract(raw_json, '$.latency_ms')   AS INTEGER) AS latency_ms,
+        json_extract_string(raw_json, '$.status')         AS status,
+        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY ts) AS rn
+      FROM delta_scan('{BRONZE}')
     )
-    .dropDuplicates(["request_id"])
-)
+    SELECT request_id, ts, date, model, user_id,
+           prompt_tokens, completion_tokens, latency_ms, status
+    FROM parsed
+    WHERE rn = 1 AND model IS NOT NULL
+""").arrow()
 
-(silver_df.write.format("delta").mode("overwrite")
-    .partitionBy("date")
-    .save(SILVER))
-print("Silver rows:", spark.read.format("delta").load(SILVER).count())
+write_deltalake(SILVER, silver_arrow, mode="overwrite", partition_by=["date"])
+print(f"Silver rows: {DeltaTable(SILVER).to_pyarrow_table().num_rows:,}")
 
 # %% [markdown]
 # ## Gold — aggregate to (date, model) metrics
 
 # %%
-silver = spark.read.format("delta").load(SILVER)
+reset(GOLD)
 
-# Cost model — illustrative USD/M-token (NOT canonical)
-COST = {
-    "claude-haiku-4-5":   (0.80, 4.00),
-    "claude-sonnet-4-6":  (3.00, 15.00),
-    "claude-opus-4-7":    (15.00, 75.00),
-}
-cost_in  = F.create_map(*[x for k, v in COST.items() for x in (F.lit(k), F.lit(v[0]))])
-cost_out = F.create_map(*[x for k, v in COST.items() for x in (F.lit(k), F.lit(v[1]))])
+# Illustrative cost model — NOT canonical pricing.
+# (input USD / 1M tokens, output USD / 1M tokens)
+COST_TABLE = """
+  VALUES
+    ('claude-haiku-4-5',  0.80,  4.00),
+    ('claude-sonnet-4-6', 3.00, 15.00),
+    ('claude-opus-4-7', 15.00, 75.00)
+"""
 
-gold_df = (silver
-    .groupBy("date", "model")
-    .agg(
-        F.percentile_approx("latency_ms", 0.5).alias("p50_latency_ms"),
-        F.percentile_approx("latency_ms", 0.95).alias("p95_latency_ms"),
-        F.sum("prompt_tokens").alias("total_prompt_tokens"),
-        F.sum("completion_tokens").alias("total_completion_tokens"),
-        (F.sum(F.when(F.col("status") != "ok", 1).otherwise(0))
-            / F.count("*")).alias("error_rate"),
-    )
-    .withColumn(
-        "cost_usd",
-        (F.col("total_prompt_tokens")    * cost_in[F.col("model")]  / F.lit(1_000_000)) +
-        (F.col("total_completion_tokens")* cost_out[F.col("model")] / F.lit(1_000_000))
-    )
-)
+gold_arrow = duckdb.sql(f"""
+    WITH cost(model, c_in, c_out) AS ({COST_TABLE})
+    SELECT
+      s.date,
+      s.model,
+      QUANTILE_CONT(s.latency_ms, 0.50) AS p50_latency_ms,
+      QUANTILE_CONT(s.latency_ms, 0.95) AS p95_latency_ms,
+      SUM(s.prompt_tokens)              AS total_prompt_tokens,
+      SUM(s.completion_tokens)          AS total_completion_tokens,
+      AVG(CASE WHEN s.status <> 'ok' THEN 1.0 ELSE 0.0 END) AS error_rate,
+      (SUM(s.prompt_tokens)     * c.c_in  / 1e6) +
+      (SUM(s.completion_tokens) * c.c_out / 1e6) AS cost_usd
+    FROM delta_scan('{SILVER}') s
+    JOIN cost c USING (model)
+    GROUP BY s.date, s.model, c.c_in, c.c_out
+    ORDER BY s.date, s.model
+""").arrow()
 
-(gold_df.write.format("delta").mode("overwrite")
-    .partitionBy("date")
-    .save(GOLD))
+write_deltalake(GOLD, gold_arrow, mode="overwrite", partition_by=["date"])
 
-# Z-ORDER by model for fast filter-by-model dashboards
-spark.sql(f"OPTIMIZE delta.`{GOLD}` ZORDER BY (model)")
+# Z-order for fast filter-by-model dashboards
+DeltaTable(GOLD).optimize.z_order(["model"])
 
 # %% [markdown]
 # ## Verify Gold
 
 # %%
-spark.read.format("delta").load(GOLD).orderBy("date", "model").show(20, truncate=False)
+print(pl.from_arrow(DeltaTable(GOLD).to_pyarrow_table()))
 
 # %% [markdown]
 # ## ✅ Deliverable check
-# - [ ] All three tables exist in MinIO (`bronze/`, `silver/`, `gold/`)
+# - [ ] All three tables exist under `_lakehouse/{bronze,silver,gold}/`
 # - [ ] Silver has fewer rows than Bronze (dedup worked)
-# - [ ] Gold rows = (#dates × #models)
-# - [ ] Cost column populated (non-zero)
-
-# %%
-spark.stop()
+# - [ ] Gold rows = (#dates × #models), populated cost & error_rate

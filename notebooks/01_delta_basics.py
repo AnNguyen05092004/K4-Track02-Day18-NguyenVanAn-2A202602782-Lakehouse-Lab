@@ -2,80 +2,85 @@
 # jupyter:
 #   jupytext:
 #     formats: py:percent
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
 # ---
 
 # %% [markdown]
-# # NB1 — Delta Lake Basics
+# # NB1 — Delta Lake Basics (lightweight path)
 #
-# **Mục tiêu:** Tạo Delta table, observe transaction log, demo schema enforcement.
-#
+# **Stack:** `deltalake` (delta-rs) + Polars + DuckDB. No Spark, no JVM.
 # Maps to slide §2 (Delta Lake) + deliverable bullet 1.
+#
+# > Spark equivalent: `spark.read.format("delta").load(path)` ↔ `DeltaTable(path).to_pyarrow_table()`.
+# > Same on-disk format, different binding.
 
 # %%
 import sys
-sys.path.append("/workspace/scripts")
-from spark_session import get_spark
-from pyspark.sql import functions as F
+sys.path.insert(0, "/workspace/scripts" if __import__("os").path.exists("/workspace") else "../scripts")
+import polars as pl
+from deltalake import DeltaTable, write_deltalake
+from deltalake.exceptions import SchemaMismatchError
+from lakehouse import path, reset
 
-spark = get_spark("nb1_delta_basics")
+table_path = path("scratch", "users_delta")
+reset(table_path)  # idempotent rerun
 
 # %% [markdown]
 # ## 1. Write a Delta table
 
 # %%
-data = [
-    (1, "alice", 30, "Hanoi"),
-    (2, "bob", 25, "HCMC"),
-    (3, "charlie", 35, "Danang"),
-]
-df = spark.createDataFrame(data, ["id", "name", "age", "city"])
-table_path = "s3a://lakehouse/users_delta"
-df.write.format("delta").mode("overwrite").save(table_path)
+df = pl.DataFrame({
+    "id": [1, 2, 3],
+    "name": ["alice", "bob", "charlie"],
+    "age": [30, 25, 35],
+    "city": ["Hanoi", "HCMC", "Danang"],
+})
+write_deltalake(table_path, df.to_arrow(), mode="overwrite")
 
 # %% [markdown]
 # ## 2. Read it back + inspect transaction log
 #
-# Open MinIO console (http://localhost:9001) → `lakehouse/users_delta/_delta_log/`.
-# You should see `00000000000000000000.json`.
+# Look at `_lakehouse/scratch/users_delta/_delta_log/00000000000000000000.json` —
+# that's the transaction log. Same JSON format Spark/Databricks would write.
 
 # %%
-spark.read.format("delta").load(table_path).show()
-spark.sql(f"DESCRIBE HISTORY delta.`{table_path}`").show(truncate=False)
+dt = DeltaTable(table_path)
+print(pl.from_arrow(dt.to_pyarrow_table()))
+print("\nHistory:")
+for h in dt.history():
+    print(f"  v{h['version']}  {h['operation']}  {h.get('operationMetrics', {})}")
 
 # %% [markdown]
 # ## 3. Schema enforcement — try to write a wrong schema
 
 # %%
+bad = pl.DataFrame({"id": [4], "name": ["dan"], "age": ["thirty"], "city": ["Hue"]})
 try:
-    bad = spark.createDataFrame([(4, "dan", "thirty", "Hue")], ["id", "name", "age", "city"])
-    bad.write.format("delta").mode("append").save(table_path)
-except Exception as e:
-    print("BLOCKED by schema enforcement (expected):")
-    print(type(e).__name__, str(e)[:200])
+    write_deltalake(table_path, bad.to_arrow(), mode="append")
+    print("UNEXPECTED: bad write succeeded")
+except (SchemaMismatchError, Exception) as e:
+    print(f"BLOCKED by schema enforcement (expected): {type(e).__name__}")
 
 # %% [markdown]
 # ## 4. Schema evolution (opt-in)
 
 # %%
-new_col = spark.createDataFrame(
-    [(4, "dan", 28, "Hue", "premium")],
-    ["id", "name", "age", "city", "tier"],
-)
-new_col.write.format("delta").mode("append").option("mergeSchema", "true").save(table_path)
-spark.read.format("delta").load(table_path).show()
+new = pl.DataFrame({
+    "id": [4], "name": ["dan"], "age": [28], "city": ["Hue"], "tier": ["premium"],
+})
+write_deltalake(table_path, new.to_arrow(), mode="append", schema_mode="merge")
+dt = DeltaTable(table_path)
+print(pl.from_arrow(dt.to_pyarrow_table()))
+
+# %% [markdown]
+# ## 5. Bonus — query with DuckDB (zero copy)
+
+# %%
+import duckdb
+duckdb.sql(f"SELECT tier, count(*) FROM delta_scan('{table_path}') GROUP BY 1").show()
 
 # %% [markdown]
 # ## ✅ Deliverable check
 # - [ ] `_delta_log/` contains JSON files
 # - [ ] Schema enforcement blocked the bad write
-# - [ ] mergeSchema added the `tier` column
-
-# %%
-spark.stop()
+# - [ ] schema_mode="merge" added the `tier` column
+# - [ ] DuckDB query returned 2 tier groups

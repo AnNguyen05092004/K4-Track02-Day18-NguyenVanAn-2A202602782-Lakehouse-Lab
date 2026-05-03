@@ -1,115 +1,143 @@
 # Day 18 — Lakehouse Lab (Track 2)
 
 Lab cho **AICB-P2T2 · Ngày 18 · Data Lakehouse Architecture**.
-Build Bronze → Silver → Gold pipeline với Delta Lake trên local object
-storage (MinIO) — **không cần tài khoản cloud, không cần Databricks**.
+Build Bronze → Silver → Gold pipeline với Delta Lake.
+
+**Hai paths để chọn:**
+
+| Path | Stack | Setup | RAM | Khi nào dùng |
+|---|---|---|---|---|
+| **Lightweight (default)** | `deltalake` + DuckDB + Polars | `make setup` (~10 s) | ~500 MB | Hầu hết học viên — laptop yếu, mạng chậm, muốn focus vào concept |
+| **Spark (Docker)** | PySpark + delta-spark + MinIO | `make spark-up` (~3 min) | ~4 GB | Học viên muốn trải nghiệm Spark API y hệt production Databricks |
+
+> Cả hai paths viết ra **cùng một Delta Lake on-disk format** — bạn có thể đổi
+> giữa hai paths bất cứ lúc nào, các tables vẫn đọc được.
 
 ---
 
-## Quick Start (3 lệnh)
+## Quick Start — Lightweight (recommended)
 
 ```bash
 git clone https://github.com/VinUni-AI20k/Day18-Track2-Lakehouse-Lab.git
 cd Day18-Track2-Lakehouse-Lab
-make up && make smoke
+make setup    # ~10 s with pip, ~2 s with uv
+make smoke    # ~5 s — verifies the stack works
+make lab      # opens http://localhost:8888
 ```
 
-Khi `make smoke` in ra `All checks passed`, mở **http://localhost:8888**
-(token: `lakehouse`) và bắt đầu từ `notebooks/01_delta_basics.ipynb`.
+Yêu cầu: **Python ≥ 3.10**. Không cần Docker, không cần Java, không cần MinIO.
 
-> **First-time only:** lệnh `make up` sẽ pull ~2 GB Docker images (Spark + MinIO),
-> sau đó cell đầu tiên sẽ download ~200 MB Maven JARs (Delta + Hadoop-AWS).
-> Tất cả được cache lại — lần `make up` thứ hai chạy < 10 giây.
+Khi `make smoke` báo `All checks passed`, mở
+**http://localhost:8888/lab/tree/01_delta_basics.ipynb** và bắt đầu.
+
+Generate sample data cho NB4:
+```bash
+make data    # 200K rows → _lakehouse/bronze/llm_calls_raw/
+```
 
 ### Tất cả lệnh `make`
 
-| Lệnh         | Tác dụng |
-|--------------|----------|
-| `make up`    | Start MinIO + Spark/Jupyter |
-| `make smoke` | 30-second end-to-end smoke test |
-| `make data`  | Generate 1M-row Bronze sample (cần cho NB4) |
-| `make logs`  | Tail logs (debug) |
-| `make down`  | Stop containers (data persists) |
-| `make clean` | Stop **và xoá toàn bộ** MinIO data + cache (full reset) |
-| `make shell` | Bash shell trong Spark container |
+```
+make setup     Lightweight: tạo venv + install (80 MB)
+make smoke     Lightweight: 5-second smoke test
+make lab       Lightweight: open Jupyter Lab
+make data      Lightweight: generate Bronze sample
+make clean     Lightweight: wipe venv + _lakehouse/
 
-Không có `make`? Dùng trực tiếp: `docker compose -f docker/docker-compose.yml up -d`.
-
----
-
-## Yêu cầu hệ thống
-
-- **Docker Desktop** ≥ 4.x (Mac/Windows) hoặc Docker Engine ≥ 24 (Linux)
-- **RAM** ≥ 8 GB free (Spark cần ~4 GB)
-- **Disk** ≥ 10 GB free
-- **Network** mở Maven Central (`repo1.maven.org`) — chỉ lần đầu
-
-Đã test trên macOS 15 (Apple Silicon), Ubuntu 22.04, Windows 11 + WSL2.
+make spark-up      Spark/Docker: start full stack
+make spark-smoke   Spark/Docker: smoke test
+make spark-data    Spark/Docker: generate 1M-row sample
+make spark-down    Spark/Docker: stop (data persists)
+make spark-clean   Spark/Docker: full reset
+```
 
 ---
 
-## Cấu trúc & tiến trình
+## Quick Start — Spark/Docker (optional)
+
+```bash
+make spark-up && make spark-smoke
+```
+
+Yêu cầu: Docker Desktop ≥ 4.x, RAM ≥ 8 GB free.
+Endpoints + troubleshooting cho path này: xem [`notebooks-spark/README.md`](notebooks-spark/) (notebooks dùng PySpark API).
+
+---
+
+## Cấu trúc & tiến trình (cả hai paths)
 
 | Notebook | Skill | Slide section |
 |---|---|---|
-| `01_delta_basics.ipynb` | Write/read Delta, schema enforcement, transaction log | §2 Delta Lake |
-| `02_optimize_zorder.ipynb` | Small-file problem; OPTIMIZE + ZORDER benchmark | §5 Storage Optimization |
-| `03_time_travel.ipynb` | versionAsOf, RESTORE, MERGE, DESCRIBE HISTORY | §3 Time Travel |
-| `04_medallion.ipynb` | LLM-observability Bronze→Silver→Gold pipeline | §6 Lakehouse cho AI/ML |
+| `01_delta_basics` | Write/read Delta, schema enforcement, transaction log | §2 Delta Lake |
+| `02_optimize_zorder` | Small-file problem; OPTIMIZE + Z-order benchmark | §5 Storage Optimization |
+| `03_time_travel` | versionAsOf, RESTORE, MERGE, history() | §3 Time Travel |
+| `04_medallion` | LLM-observability Bronze→Silver→Gold pipeline | §6 Lakehouse cho AI/ML |
 
-> Source files trong git là `.py` (Jupytext percent-format) — nhỏ, dễ review,
-> không nuốt diff. Container tự động convert sang `.ipynb` lần đầu start.
-> Chỉ chỉnh sửa `.ipynb` trong Jupyter; `make` sẽ keep them in sync.
+**Source format:** Notebooks live as Jupytext `.py` files (small, easy to review).
+`make setup` and `make lab` auto-convert to `.ipynb`. Edit `.ipynb` in Jupyter
+and Jupytext keeps both in sync.
 
----
-
-## Endpoints
-
-| URL | Service | Credentials |
-|---|---|---|
-| http://localhost:8888 | Jupyter Lab | token `lakehouse` |
-| http://localhost:9001 | MinIO Console | `minioadmin` / `minioadmin` |
-| http://localhost:4040 | Spark UI | (no auth, only when a notebook is running) |
+**Spark API equivalent:** Each lightweight notebook has a comment showing the
+PySpark equivalent at the top, so you can mentally map between the two paths.
 
 ---
 
-## Deliverable (nộp 4 notebook đã chạy + ảnh chụp)
+## Deliverable (4 notebook đã chạy + ảnh chụp)
 
 Mapping 1-to-1 với slide deliverable:
 
-1. **NB1** — Delta table tạo, `_delta_log/00..0.json` xuất hiện trong MinIO.
-2. **NB2** — Bảng so sánh query time TRƯỚC vs SAU `OPTIMIZE+ZORDER`. Mục tiêu ≥ 3×.
-3. **NB3** — `DESCRIBE HISTORY` show ≥ 5 versions; RESTORE < 30 s; MERGE 100K rows.
-4. **NB4** — Bronze + Silver + Gold tables tồn tại; Gold query ra metrics đúng.
+1. **NB1** — Delta table tạo, `_delta_log/00..0.json` xuất hiện trên disk.
+2. **NB2** — Speedup ≥ 3× sau OPTIMIZE+Z-ORDER (in ra trong notebook).
+3. **NB3** — `history()` show ≥ 5 versions; RESTORE < 30 s; MERGE 100K rows.
+4. **NB4** — Bronze + Silver + Gold tables tồn tại; Gold metrics đúng.
 
 Chấm điểm: xem [`rubric.md`](rubric.md). Tổng 100 pts → Track-2 Daily Lab (30%).
 
 ---
 
-## Troubleshooting
+## Cấu trúc repo
 
-| Triệu chứng | Nguyên nhân | Fix |
-|---|---|---|
-| `make up` báo "port 8888 in use" | Jupyter khác đang chạy | `lsof -i :8888` rồi kill, hoặc đổi port trong `docker/docker-compose.yml` |
-| `make smoke` fail: `ClassNotFoundException: S3AFileSystem` | Maven JARs chưa download xong | Chạy lại `make smoke` — lần 2 sẽ thấy JARs trong `~/.ivy2` cache |
-| `make smoke` fail: `Connection refused` MinIO | MinIO chưa ready | `make logs`, đợi `Buckets ready: lakehouse, bronze, silver, gold` |
-| Jupyter báo "permission denied" khi save | UID mismatch giữa host/container | `make clean && make up` (reset volumes) |
-| NB4 lỗi "Path does not exist: s3a://bronze" | Quên generate data | `make data` |
-| Spark Out-of-Memory | Default 2 GB driver không đủ | Trong notebook trước khi tạo session: `os.environ["PYSPARK_SUBMIT_ARGS"] = "--driver-memory 4g pyspark-shell"` |
-| Maven Central blocked (corp/uni network) | Firewall | Dùng `pip install --index-url …` proxy hoặc liên hệ TA để get pre-built JARs |
+```
+.
+├── Makefile              # both paths
+├── README.md             # bạn đang đọc
+├── requirements.txt      # lightweight (deltalake + duckdb + polars)
+├── requirements-spark.txt# Spark path
+├── rubric.md             # grading
+├── notebooks/            # ← lightweight path (default)
+│   ├── 01_delta_basics.py
+│   ├── 02_optimize_zorder.py
+│   ├── 03_time_travel.py
+│   └── 04_medallion.py
+├── notebooks-spark/      # Spark/Docker path (same lessons, PySpark API)
+├── scripts/
+│   ├── lakehouse.py            # path helper (lightweight)
+│   ├── generate_data_lite.py   # lightweight Bronze generator
+│   ├── verify_lite.py          # lightweight smoke test
+│   ├── spark_session.py        # Spark factory
+│   ├── generate_data.py        # Spark Bronze generator
+│   └── verify.py               # Spark smoke test
+└── docker/
+    └── docker-compose.yml      # Spark/MinIO/Jupyter stack
+```
+
+---
+
+## Troubleshooting (lightweight)
+
+| Triệu chứng | Fix |
+|---|---|
+| `make setup` báo `python3: command not found` | Install Python 3.10+ (https://www.python.org/downloads/) |
+| `make lab` báo "port 8888 in use" | Đổi: `$(JUPYTER) lab --port 8889` trong Makefile |
+| NB2 speedup < 3× | Bình thường nếu RAM < 4 GB — DuckDB cache làm before/after gần nhau. Reset bằng `make clean && make setup`. |
+| NB4 lỗi "Path does not exist" | Quên `make data` |
 
 ---
 
 ## Submission
 
-Fork repo này thành `<your-username>/Day18-Track2-Lakehouse-Lab`, push:
-1. 4 notebook đã chạy (committed với output cells)
-2. `submission/screenshots/` — MinIO console show `_delta_log/` + buckets
-3. `submission/REFLECTION.md` (≤ 200 words) — anti-pattern nào trong slide §5 team bạn dễ vướng nhất, vì sao?
-
-PR back vào upstream với title `[NXX] Lab18 — <Họ Tên>`.
+Fork repo → push 4 notebook đã chạy + `submission/REFLECTION.md` (≤ 200 words: anti-pattern nào trong slide §5 team bạn dễ vướng nhất, vì sao?). PR back vào upstream với title `[NXX] Lab18 — <Họ Tên>`.
 
 ---
 
-## License & Attribution
 © VinUniversity AICB program. Phỏng theo Track 2 Day 18 slide.
