@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+data/*.parquet
+data/*.json
+spark-warehouse/
+metastore_db/
+derby.log
+.venv/
+*.egg-info/
