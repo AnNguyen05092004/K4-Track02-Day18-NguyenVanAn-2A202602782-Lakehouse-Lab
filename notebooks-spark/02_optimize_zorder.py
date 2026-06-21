@@ -7,7 +7,7 @@
 # %% [markdown]
 # # NB2 — Small-File Problem & OPTIMIZE + ZORDER
 #
-# **Mục tiêu:** prove the 3–10× speedup claim from slide §5.
+# **Mục tiêu:** prove the 3–10× speedup claim from slide §6 (Storage Optimization).
 # Maps to deliverable bullet 2.
 
 # %%

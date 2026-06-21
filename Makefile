@@ -19,7 +19,9 @@ help: ## Show this help
 # ─────────────────────────────────────────────────────────────
 
 setup: ## [lite] Create venv + install deps (~80 MB, ~10s with pip / ~2s with uv)
-	@command -v uv >/dev/null 2>&1 && uv venv $(VENV) || python3 -m venv $(VENV)
+	@command -v uv >/dev/null 2>&1 && uv venv $(VENV) --python '>=3.10,<3.14' || python3 -m venv $(VENV)
+	@$(PY) -c 'import sys; raise SystemExit(0 if (3,10)<=sys.version_info[:2]<(3,14) else 1)' \
+	  || { echo "ERROR: need Python 3.10-3.13 (pyarrow has no 3.14 wheel yet). Install 'uv' (auto-fetches 3.12) or run: python3.12 -m venv .venv"; exit 1; }
 	@command -v uv >/dev/null 2>&1 && uv pip install --python $(PY) -r requirements.txt \
 	  || $(PIP) install -q -r requirements.txt
 	@$(JUPYTEXT) --to notebook --update notebooks/*.py 2>/dev/null || $(JUPYTEXT) --to notebook notebooks/*.py

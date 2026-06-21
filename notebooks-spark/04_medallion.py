@@ -7,7 +7,7 @@
 # %% [markdown]
 # # NB4 — Medallion Pipeline (Bronze → Silver → Gold)
 #
-# **Use case:** LLM observability — exact schema from slide §6 medallion frame.
+# **Use case:** LLM observability — exact schema from slide §8 (Lakehouse cho AI/ML) medallion frame.
 # Maps to deliverable bullet 4 (the Milestone-1 Lakehouse artifact).
 #
 # Pre-req: ran `python /workspace/scripts/generate_data.py` (writes Bronze).

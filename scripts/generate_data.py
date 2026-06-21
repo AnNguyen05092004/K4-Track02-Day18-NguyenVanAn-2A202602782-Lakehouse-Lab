@@ -1,6 +1,6 @@
 """Generate 1M synthetic LLM-observability records and write to MinIO `bronze`.
 
-Schema mirrors slide §6 medallion example. Realism choices match the
+Schema mirrors slide §8 medallion example. Realism choices match the
 lightweight generator so both paths behave identically for grading:
 
   - Timestamps spread across 7 days → multi-day Gold table.

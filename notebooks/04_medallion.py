@@ -7,7 +7,7 @@
 # %% [markdown]
 # # NB4 — Medallion Pipeline (Bronze → Silver → Gold), lightweight
 #
-# **Use case:** LLM observability — exact schema from slide §6 medallion frame.
+# **Use case:** LLM observability — exact schema from slide §8 (Lakehouse cho AI/ML) medallion frame.
 # Maps to deliverable bullet 4 (the Milestone-1 Lakehouse artifact).
 #
 # Pre-req: ran `make data` (or `python scripts/generate_data_lite.py`).
@@ -134,5 +134,5 @@ assert n_dates >= 7, (
 # ## ✅ Deliverable check
 # - [ ] All three tables exist under `_lakehouse/{bronze,silver,gold}/`
 # - [ ] Silver has fewer rows than Bronze (dedup worked)
-# - [ ] Gold spans ≥ 7 dates × 3 models (slide §6 medallion contract)
+# - [ ] Gold spans ≥ 7 dates × 3 models (slide §8 medallion contract)
 # - [ ] Cost & error_rate columns populated and non-zero

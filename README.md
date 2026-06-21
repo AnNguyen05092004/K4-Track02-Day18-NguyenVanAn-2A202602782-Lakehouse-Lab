@@ -25,7 +25,7 @@ make smoke    # ~5 s — verifies the stack works
 make lab      # opens http://localhost:8888
 ```
 
-Yêu cầu: **Python ≥ 3.10**. Không cần Docker, không cần Java, không cần MinIO.
+Yêu cầu: **Python 3.10–3.13** (pyarrow chưa có wheel cho 3.14 — `make setup` sẽ báo lỗi rõ ràng nếu bạn dùng 3.14; cài `uv` để tự lấy 3.12). Không cần Docker, không cần Java, không cần MinIO.
 
 Khi `make smoke` báo `All checks passed`, mở
 **http://localhost:8888/lab/tree/01_delta_basics.ipynb** và bắt đầu.
@@ -157,7 +157,8 @@ recommended topics, and self-checklist:
 
 | Triệu chứng | Fix |
 |---|---|
-| `make setup` báo `python3: command not found` | Install Python 3.10+ (https://www.python.org/downloads/) |
+| `make setup` báo `python3: command not found` | Install Python 3.10–3.13 (https://www.python.org/downloads/), hoặc `uv` |
+| `make setup` lỗi build `pyarrow`/`cmake` | Bạn đang dùng Python 3.14 (chưa có wheel). Cài `uv` (tự lấy 3.12) hoặc `python3.12 -m venv .venv` |
 | `make lab` báo "port 8888 in use" | Đổi: `$(JUPYTER) lab --port 8889` trong Makefile |
 | NB2 speedup < 3× | Bình thường nếu RAM < 4 GB — DuckDB cache làm before/after gần nhau. Reset bằng `make clean && make setup`. |
 | NB4 lỗi "Path does not exist" | Quên `make data` |
@@ -166,7 +167,7 @@ recommended topics, and self-checklist:
 
 ## Submission
 
-Fork repo → push 4 notebook đã chạy + `submission/REFLECTION.md` (≤ 200 words: anti-pattern nào trong slide §5 team bạn dễ vướng nhất, vì sao?). PR back vào upstream với title `[NXX] Lab18 — <Họ Tên>`.
+Fork repo → push 4 notebook đã chạy + `submission/REFLECTION.md` (≤ 200 words: anti-pattern nào trong slide “Top 5 Lakehouse Anti-Patterns” team bạn dễ vướng nhất, vì sao?). PR back vào upstream với title `[NXX] Lab18 — <Họ Tên>`.
 
 ---
 

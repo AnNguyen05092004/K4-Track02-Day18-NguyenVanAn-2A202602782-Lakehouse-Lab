@@ -7,7 +7,7 @@
 # %% [markdown]
 # # NB2 — Small-File Problem & OPTIMIZE + Z-order (lightweight)
 #
-# Maps to slide §5 + deliverable bullet 2.
+# Maps to slide §6 Storage Optimization (& Anti-Patterns) + deliverable bullet 2.
 #
 # > Spark equivalent: `OPTIMIZE delta.\`path\` ZORDER BY (user_id)`
 # > delta-rs:        `dt.optimize.compact()` + `dt.optimize.z_order(["user_id"])`
@@ -158,7 +158,7 @@ print(
 
 # %% [markdown]
 # ## ✅ Deliverable check
-# - [ ] Speedup ≥ 3× **or** files-pruned ratio ≥ 10× (slide §5 allows either)
+# - [ ] Speedup ≥ 3× **or** files-pruned ratio ≥ 10× (slide §6 allows either)
 # - [ ] File count dropped substantially after compact()
 # - [ ] Stats inspection shows ~1 file covers `user_id=4242`
 # - [ ] Screenshot the printed numbers

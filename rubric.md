@@ -50,7 +50,7 @@ PR back to upstream. Include:
 2. `submission/screenshots/` — at least one of:
    - MinIO console showing `_delta_log/` + bucket layout (Spark path), OR
    - Terminal `tree _lakehouse/` + a screenshot of one `_delta_log/*.json` file content (lite path)
-3. `submission/REFLECTION.md` (≤ 200 words): which anti-pattern from slide §5
+3. `submission/REFLECTION.md` (≤ 200 words): which anti-pattern from the “Top 5 Lakehouse Anti-Patterns” slide
    would your team's data be most at risk of, and why?
 4. **Optional:** `submission/bonus/ARCHITECTURE.md` + `submission/bonus/poc/`
    for the [bonus challenge](BONUS-CHALLENGE.md).
