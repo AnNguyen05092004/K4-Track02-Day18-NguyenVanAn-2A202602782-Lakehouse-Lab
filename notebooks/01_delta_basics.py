@@ -73,7 +73,7 @@ dt = DeltaTable(table_path)
 print(pl.from_arrow(dt.to_pyarrow_table()).sort("id"))
 
 # %% [markdown]
-# ## 5. Bonus — query with DuckDB (zero copy)
+# ## 5. Query with DuckDB via Arrow (part of the required notebook)
 
 # %%
 import duckdb
@@ -92,6 +92,8 @@ print(tier_counts)
 # - [ ] Schema enforcement blocked the bad write
 # - [ ] schema_mode="merge" added the `tier` column
 # - [ ] DuckDB query returned 2 tier groups
+# The final schema-enforcement flag is hardcoded; inspect the actual error
+# from the bad-write cell rather than treating that PASS line as proof.
 
 # %%
 from pathlib import Path as _Path  # noqa: E402
@@ -100,7 +102,7 @@ _log = sorted(_Path(table_path).glob("_delta_log/*.json"))
 _cols = DeltaTable(table_path).schema().to_arrow().names
 checks = {
     "_delta_log/ has JSON commits": len(_log) >= 2,
-    "schema enforcement blocked bad write": True,   # the try/except above proved it
+    "schema enforcement blocked bad write": True,   # placeholder; inspect the bad-write output
     "tier column added via schema_mode=merge": "tier" in _cols,
     "duckdb sees 2 tier groups": len(tier_counts) == 2,
 }

@@ -1,4 +1,4 @@
-"""End-to-end smoke test. Run via `make smoke`.
+"""End-to-end Spark smoke test. Run via `make spark-smoke`.
 
 Checks:
   1. Spark session boots with Delta extensions.
@@ -50,7 +50,8 @@ def main() -> int:
         print(
             "\nCommon causes:\n"
             "  - First run downloading Maven JARs (~200 MB): retry once.\n"
-            "  - MinIO not ready: `make logs` and look for 'Buckets ready'.\n"
+            "  - MinIO not ready: `docker compose -f infra/docker-compose.yml logs` "
+            "and look for 'Buckets ready'.\n"
             "  - Network blocks Maven Central: see README troubleshooting."
         )
         return 1

@@ -101,10 +101,10 @@ def test_all_four_art10_buckets_are_representable():
     t = gen.make_corpus(2000)
     licenses = set(t.column("license").to_pylist())
     assert {"proprietary", "commercial"} & licenses      # licensed
-    assert "cc-by-4.0" in licenses                        # public domain
-    assert "user-owned" in licenses                       # opt-out checked
+    assert "cc-by-4.0" in licenses                        # attribution-license fixture
+    assert "user-owned" in licenses                       # consent fixture, not opt-out evidence
     assert "synthetic" in licenses                        # synthetic
-    assert "unknown" in licenses                          # the audit failure
+    assert "unknown" in licenses                          # UNCLASSIFIED under the lab rule
 
 
 def test_synthetic_rows_record_their_generator():

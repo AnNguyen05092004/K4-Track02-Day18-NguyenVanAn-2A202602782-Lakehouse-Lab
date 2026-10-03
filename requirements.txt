@@ -1,12 +1,12 @@
 # Day 18 Lakehouse Lab — lightweight (default) path.
-# Pure Python: no JVM, no Docker, no cloud account, no API key.
-# Total install ~180 MB. Works on Python 3.10 – 3.14 (all wheels verified 2026-08).
+# Python APIs with native wheels: no JVM, Docker, cloud account or API key.
+# Configured Python range: 3.10–3.14; current validation: Python 3.11 on Windows.
 #
-# Lower-bound pins keep the lab reproducible; upper bounds are major-version
-# guards only, so a student on a fresh machine still gets working wheels.
+# Version ranges guard supported dependency families; they are not a lockfile.
+# Record installed versions when submitting or investigating different results.
 
 deltalake>=1.0,<2.0      # delta-rs 1.x: adds load_cdf(), repair() (FSCK), compact_logs()
-pyiceberg[sql-sqlite,pyarrow]>=0.9,<1.0   # NB5/NB6: local REST-shaped catalog
+pyiceberg[sql-sqlite,pyarrow,pyiceberg-core]>=0.9,<1.0   # catalog + hidden partition transforms
 duckdb>=1.1,<2.0         # SQL engine + core array_cosine_similarity (no extension download)
 polars>=1.13.2,<2.0      # 1.13.1 was yanked
 pyarrow>=17,<26

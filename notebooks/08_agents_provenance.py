@@ -5,7 +5,7 @@
 # ---
 
 # %% [markdown]
-# # NB8 — Agents as consumers, and provenance as a legal deadline
+# # NB8 — Agents as consumers, and illustrative data provenance
 #
 # **Stack:** `deltalake` + DuckDB. No LLM call, no API key — the agent loop is
 # deterministic so the *data contract* is what you study, not model behaviour.
@@ -15,8 +15,11 @@
 # Three parts:
 #
 # 1. **Trajectories** — the lakehouse as system-of-record for what an agent did
-# 2. **MCP** — the protocol shape an agent uses to reach your catalog
-# 3. **Provenance** — EU AI Act Art. 10, in force since **2 Aug 2026**
+# 2. **MCP-inspired simulation** — caching, confirmation and task polling
+# 3. **Provenance** — record origins, classify rows and pin a corpus version
+#
+# This notebook does not implement a conforming MCP server or certify legal
+# compliance. Its four buckets and simplified license mapping are lab rules.
 
 # %%
 import _setup  # noqa: F401
@@ -140,12 +143,14 @@ print("\nThat one integer is the difference between a reproducible run and a sto
 # ## Part 2 — MCP: the shape of the agent ↔ lakehouse boundary
 #
 # **MCP revision 2026-07-28** made changes that matter specifically to a data
-# platform. We implement the *shape* of each below — no network, no LLM.
+# platform. The table summarizes ideas from the official release; the class
+# below is a simplified local simulation, not the protocol's wire schema.
+# Source: [MCP release](https://blog.modelcontextprotocol.io/posts/2026-07-28/).
 #
 # | Change | Why a data team cares |
 # |---|---|
 # | **Stateless core** — no `initialize` handshake; each request self-describes in `_meta` | A catalog MCP server can sit behind a round-robin load balancer with no session store |
-# | **Cacheable lists** — `tools/list` carries `ttlMs`, `cacheScope` | A 50,000-table catalog stops re-listing itself every agent turn |
+# | **Cacheable lists** — list responses advertise cache hints | A catalog need not re-list itself every agent turn |
 # | **Multi-round-trip** — `resultType: input_required` | Human-in-the-loop before `DELETE` or a cross-border export |
 # | **Header routing** — `Mcp-Method`, `Mcp-Name` | Gateway routes and **meters per tool** without parsing JSON |
 # | **Tasks extension** — poll `tasks/get` | The right shape for a 40-minute Spark job |
@@ -173,7 +178,9 @@ class LakehouseMCP:
     """An MCP-2026-07-28-shaped read surface over the catalog.
 
     Deliberately NOT a network server — the point is the contract, not the
-    transport. Every behaviour below maps to a row of the table above.
+    transport. Field names and responses are simplified for this lab.
+    The cache is in list_tables; confirmed is caller-controlled, not an
+    authorization boundary; delete_rows is a no-op.
     """
 
     DESTRUCTIVE = {"drop_table", "delete_rows"}
@@ -195,7 +202,7 @@ class LakehouseMCP:
                 {"name": "submit_scan",  "description": "Long scan; returns a task handle"},
                 {"name": "delete_rows",  "description": "DESTRUCTIVE: delete matching rows"},
             ],
-            # The client may cache this list for ttlMs, scoped per-session.
+            # Lab-specific metadata, not a complete MCP cache-hints schema.
             "_meta": {"ttlMs": self.list_ttl_ms, "cacheScope": "session"},
         }
 
@@ -246,7 +253,7 @@ class LakehouseMCP:
 
         if name == "submit_scan":
             # Tasks extension: return a handle immediately, poll for completion.
-            # Same shape as Iceberg 1.11 server-side planning returning a plan-id.
+            # This lab emulates delayed completion; it does not run a background job.
             task_id = f"task_{len(self._cache):04d}"
             self._cache[task_id] = (time.time(), args["table"])
             return {"taskId": task_id, "status": "working", "pollAfterMs": 50}
@@ -267,7 +274,7 @@ class LakehouseMCP:
 mcp = LakehouseMCP(cat, ns)
 
 # %% [markdown]
-# ### Cacheable lists: a 50,000-table catalog should not re-list every turn
+# ### Cached list_tables calls: avoid repeated catalog reads
 
 # %%
 for turn in range(5):
@@ -287,7 +294,7 @@ print(f"prompt:     {attempt['prompt']}")
 approved = mcp.call("delete_rows", {"table": f"{ns}.trajectories", "where": "reward = 0"},
                     _meta={"confirmed": True})
 print(f"\nafter human approval → resultType: {approved['resultType']}")
-print("\nThe agent CANNOT self-approve. That gate is the protocol's, not the model's.")
+print("\nLab limitation: confirmed is supplied by the caller; this is not an authorization boundary.")
 
 # %% [markdown]
 # ### Tasks: the right shape for a scan that takes 40 minutes
@@ -303,8 +310,7 @@ for poll in range(5):
         print(f"  result: {st['result']}")
         break
     time.sleep(0.03)
-print("\nIceberg 1.11 server-side planning returns a plan-id you poll the same way.")
-print("Two protocols, one shape — that is not a coincidence.")
+print("\nThe task handle and polling are simulated locally; no background Spark job is submitted.")
 
 # %% [markdown]
 # ### Per-tool metering — the FinOps hook
@@ -320,24 +326,24 @@ for tool, m in sorted(mcp.meter.items()):
     print(f"{tool:<14} {m['calls']:>6} {m['ms']:>10.2f}")
 
 # %% [markdown]
-# ## Part 3 — Provenance: EU AI Act Art. 10 is already in force
+# ## Part 3 — Provenance as recorded data, not a compliance certificate
 #
-# High-risk obligations applied from **2 August 2026** — that date has passed.
-# Article 10 attaches to your *training / validation / test* sets: origin,
-# how they were prepared (labelling, cleaning), bias checks, and data gaps.
+# [EU AI Act, Article 10](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02024R1689-20260727)
+# addresses data governance and quality for relevant high-risk AI systems.
+# It does not prescribe the four buckets used in this lab. Applicability and
+# deadlines require checking the current law and the particular system.
 #
-# The slide's key reframe:
-#
-# > Every training row must resolve to exactly one of four buckets —
-# > **licensed**, **public domain**, **scraped with opt-out checked**,
-# > **synthetic (with generator recorded)**. Those four buckets are
-# > **one governed column plus a partition key**, not a Confluence page.
+# Here we illustrate a governed column plus a partition key. The existing
+# mapping below is intentionally limited: CC BY 4.0 is a license requiring
+# attribution, not public domain; user ownership plus consent does not prove
+# a scraping opt-out check. Source: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+# Treat these labels as lab fixtures, not evidence of real training rights.
 
 # %%
 docs = DeltaTable(DOCS).to_pyarrow_table()
 con.register("docs", docs)
 
-# The four Art. 10 buckets, as ONE column expression. Anything that falls
+# The four illustrative lab buckets, as ONE column expression. Anything that falls
 # through is UNCLASSIFIED — and UNCLASSIFIED is an audit finding, not a
 # rounding error, so it must never silently become a default bucket.
 BUCKET_SQL = """
@@ -359,13 +365,14 @@ print(pl.from_arrow(audit))
 
 unclassified = con.sql(f"SELECT count(*) FROM docs WHERE {BUCKET_SQL} = 'UNCLASSIFIED'").fetchone()[0]
 print(f"\nUNCLASSIFIED rows: {unclassified:,}")
-print("→ Mixing scraped and licensed data in one unlabelled bucket is a 2026 audit failure.")
+print("→ UNCLASSIFIED rows fail the lab's classification rule; this is not a legal audit result.")
 
 # %% [markdown]
 # ### Make the bucket a real column *and* a partition key
 #
-# Once provenance is a partition, "exclude everything we cannot defend" is a
-# partition prune, not a full-table scan and a prayer.
+# A provenance partition key can support file pruning when the reader uses
+# Delta's partition metadata. The DuckDB queries here read a registered Arrow
+# table, so this cell does not measure partition pruning.
 
 # %%
 GOVERNED = path("silver", "training_corpus_governed")
@@ -385,11 +392,11 @@ for p_ in parts:
 con.register("governed", DeltaTable(GOVERNED).to_pyarrow_table())
 trainable = con.sql("""SELECT count(*) FROM governed
                        WHERE provenance_bucket <> 'UNCLASSIFIED'""").fetchone()[0]
-print(f"\nDefensible training rows: {trainable:,} / {governed.num_rows:,}")
+print(f"\nRows selected by the lab's training filter: {trainable:,} / {governed.num_rows:,}")
 print(f"Excluded as UNCLASSIFIED:  {governed.num_rows - trainable:,}")
 
 # %% [markdown]
-# ### The Annex IV answer: "which corpus version was model X trained on?"
+# ### A version record: "which corpus version did this simulated run use?"
 #
 # `DESCRIBE HISTORY` + the pinned version + the run id. Three facts, one query.
 
@@ -402,7 +409,7 @@ model_card = {
     "rows_used": trainable,
     "buckets_used": [p_.split("=", 1)[1] for p_ in parts if "UNCLASSIFIED" not in p_],
     "excluded_rows": governed.num_rows - trainable,
-    "exclusion_reason": "license=unknown → fails Art. 10 origin requirement",
+    "exclusion_reason": "license=unknown → excluded by the lab classification rule",
 }
 print(json.dumps(model_card, indent=2))
 
@@ -411,11 +418,11 @@ print(f"\nDESCRIBE HISTORY → {len(hist)} version(s); v{corpus_version} written
       f"by {hist[0]['operation']}")
 
 # %% [markdown]
-# ### Right-to-erasure, and why provenance makes it answerable
+# ### Subject deletion: distinguish the current table from older versions
 #
-# Vietnam's **PDPL (Law 91/2025)** and the GDPR both give a data subject the
-# right to erasure. The question that sinks teams is not *"can you delete it?"*
-# — it is *"can you prove what it was in, including the model corpus?"*
+# We simulate a subject-deletion request and locate the affected rows.
+# The test only proves deletion from the current table version. It does not
+# cover backups, external indexes, trained models or legal obligations.
 
 # %%
 SUBJECT = "user_007"
@@ -438,10 +445,9 @@ print(f"\nRows for {SUBJECT}: {before} → {after}")
 print(f"Table version: {corpus_version} → {after_dt.version()}")
 print(f"""
 Note the tension the slide flags: time travel means v{corpus_version} STILL contains
-the erased rows. Deletion is only complete once retention expires those
-versions (NB6, Job 3). "We support time travel" and "we honour erasure" are
-in direct conflict unless your retention window is a deliberate, written
-decision — not a default.""")
+the deleted rows. Removing rows from the current version does not remove old
+physical files. Retention and VACUUM must be considered separately (NB6),
+as must any copies or derived artifacts outside this table.""")
 
 # %% [markdown]
 # ## ✅ NB8 pass criteria
@@ -449,23 +455,23 @@ decision — not a default.""")
 # | Check | Target |
 # |---|---|
 # | Trajectory medallion | Silver partitioned by `agent_version`; Gold has both policies |
-# | Version pin | Replay at the pinned version matches what training saw |
-# | MCP cacheable lists | 5 agent turns → 1 catalog round-trip |
+# | Version pin | Replay at the pinned version matches the recorded step count |
+# | Cached list_tables | 5 agent turns → 1 catalog round-trip |
 # | MCP human-in-the-loop | Destructive call returns `input_required` before approval |
 # | MCP tasks | `submit_scan` → poll → `completed` |
-# | Provenance | all 4 Art. 10 buckets exist as partitions; UNCLASSIFIED excluded |
+# | Provenance | all 4 illustrative lab buckets exist as partitions; UNCLASSIFIED excluded |
 # | Erasure | Subject rows = 0 in the current version, and you can say which bucket they were in |
 
 # %%
 checks = {
     "silver partitioned by agent_version": len(list(Path(SILVER).glob("agent_version=*"))) == 2,
     "gold covers both policies":           gold.num_rows == 2,
-    "version pin replays exactly":         pinned.count() == training_run["n_steps_seen"],
+    "pinned version step count matches":   pinned.count() == training_run["n_steps_seen"],
     "5 turns → 1 catalog read":            mcp.catalog_reads == 1,
     "destructive needs confirmation":      attempt["resultType"] == "input_required",
     "confirmed call proceeds":             approved["resultType"] == "ok",
     "tasks poll completes":                st["status"] == "completed",
-    "all 4 Art.10 buckets present":        len([x for x in parts if "UNCLASSIFIED" not in x]) == 4,
+    "all 4 lab buckets present":           len([x for x in parts if "UNCLASSIFIED" not in x]) == 4,
     "unclassified rows found":             unclassified > 0,
     "erasure removed subject rows":        after == 0 and before > 0,
 }

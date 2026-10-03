@@ -194,8 +194,7 @@ con.register("docs", docs)
 # comes back as a variable-length `list<float>` and we must cast it before
 # DuckDB's fixed-size array functions will bind:
 print("arrow type on read:", docs.schema.field("emb").type, " → cast to FLOAT[dim] at query time")
-print("This missing type is exactly why Hudi 1.2 added a first-class")
-print("VECTOR(dim, type) column, and why the slide flags it as the 2026 trend.\n")
+print("This lab casts the variable-length list to a fixed-size DuckDB array before vector queries.\n")
 
 query_vec = emb[7].tolist()          # pretend this came from an encoder
 t0 = time.perf_counter()

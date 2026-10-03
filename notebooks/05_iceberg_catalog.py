@@ -14,15 +14,13 @@
 # importantly, the thing both formats now agree is the centre of the
 # architecture: **the catalog**.
 #
-# > **The 2026 shift.** Iceberg 1.11 moved scan planning *server-side*; Delta 4.1
-# > shipped *catalog-managed tables*. Two rival camps, one conclusion: the catalog
-# > stopped being a name→path lookup and became the **query planner and security
-# > boundary**. That is the single biggest architectural change of the year, and
-# > it is what this notebook makes concrete.
+# > **Catalog responsibilities.** This notebook uses a local SQLite catalog
+# > for namespaces, table registration and metadata updates. It demonstrates
+# > client-side scan planning, not remote planning or a security boundary.
 #
 # > Production equivalent: `SqlCatalog(sqlite)` ↔ `load_catalog(type="rest")`
-# > against Polaris / Unity / Lakekeeper / Glue. **Same API, same on-disk
-# > metadata** — you are not learning a toy dialect.
+# > against a compatible REST catalog. Production catalogs require separate
+# > configuration, authentication and checking which APIs/features they support.
 
 # %%
 import _setup  # noqa: F401  -- adds scripts/ to sys.path (file-relative)
@@ -118,11 +116,11 @@ print(f"Snapshots: {len(tbl.snapshots())}   (one per commit)")
 print(f"Data files: {tbl.inspect.files().num_rows}")
 
 # %% [markdown]
-# ## 4. Scan planning — the number the catalog computes for you
+# ## 4. Scan planning — count the files selected by the client
 #
 # `plan_files()` is the planning step itself: given a filter, which data files
-# must actually be read? In Iceberg 1.11+ this can run **inside the catalog
-# server**, so a laptop client never downloads the manifest tree at all.
+# must actually be read? This lab plans the scan locally through PyIceberg;
+# it does not demonstrate server-side planning.
 #
 # Watch: we filter on **`ts`**, never on `ts_day`.
 

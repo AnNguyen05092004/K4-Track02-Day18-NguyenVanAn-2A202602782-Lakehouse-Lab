@@ -35,17 +35,16 @@ SEED = 42
 TOPICS = ["inference", "training", "retrieval", "storage",
           "governance", "billing", "networking", "evaluation"]
 
-# Provenance mixes: a realistic corpus is NOT uniformly licensed, and that is
-# precisely why EU AI Act Art. 10 provenance records are hard to produce later.
-# (source, license, consent_train, generator) — one row per EU AI Act Art. 10
-# bucket, plus one deliberately unclassifiable source so the audit has teeth.
+# Synthetic provenance fixtures: (source, license, consent_train, generator).
+# NB8's four-bucket mapping is illustrative and has known license/opt-out
+# limitations. These tags do not establish real data-use rights.
 SOURCES = [
     ("internal_docs",  "proprietary", True,  None),          # → licensed
     ("vendor_feed",    "commercial",  True,  None),          # → licensed
-    ("public_crawl",   "cc-by-4.0",   True,  None),          # → public domain
-    ("user_uploads",   "user-owned",  True,  None),          # → scraped, opt-out checked
+    ("public_crawl",   "cc-by-4.0",   True,  None),          # attribution license, not public domain
+    ("user_uploads",   "user-owned",  True,  None),          # consent fixture; no scraping opt-out proof
     ("model_output",   "synthetic",   True,  "claude-sonnet-4-6"),  # → synthetic
-    ("scraped_forum",  "unknown",     False, None),          # → FAILS the audit
+    ("scraped_forum",  "unknown",     False, None),          # → UNCLASSIFIED in the lab
 ]
 
 
@@ -72,7 +71,7 @@ def make_corpus(n: int = N_DOCS, dim: int = DIM, seed: int = SEED) -> pa.Table:
     sources = [SOURCES[i][0] for i in src_idx]
     licenses = [SOURCES[i][1] for i in src_idx]
     consent = [bool(SOURCES[i][2]) for i in src_idx]
-    # Art. 10 requires synthetic data to record what generated it.
+    # Record a simulated generator tag; no model is called by this script.
     generators = [SOURCES[i][3] for i in src_idx]
 
     return pa.table({

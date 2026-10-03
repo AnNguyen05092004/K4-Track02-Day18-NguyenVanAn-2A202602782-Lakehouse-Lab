@@ -1,8 +1,8 @@
 """Execute every notebook headlessly, in order. `make run-all`.
 
-Each notebook ends in its own `assert` block over its pass criteria, so a
-non-zero exit here means a criterion actually failed — this is the same gate
-the instructor runs before grading.
+Runs the lightweight Python notebooks and any assertions they contain.
+A non-zero exit indicates a runtime or assertion failure. Passing does not
+prove every rubric criterion, and this runner does not save .ipynb outputs.
 """
 from __future__ import annotations
 

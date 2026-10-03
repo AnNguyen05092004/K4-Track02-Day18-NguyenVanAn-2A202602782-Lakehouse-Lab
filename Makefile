@@ -1,5 +1,5 @@
-## Day 18 Lakehouse Lab — student UX
-## Two paths: lightweight (default, pure Python) and Spark (Docker, optional).
+## K4-Track02-Day18 Lakehouse Lab — student UX
+## Two paths: lightweight (default, Python APIs) and Spark (Docker, optional).
 
 VENV       := .venv
 PY         := $(VENV)/bin/python
@@ -7,7 +7,7 @@ PIP        := $(VENV)/bin/pip
 JUPYTER    := $(VENV)/bin/jupyter
 JUPYTEXT   := $(VENV)/bin/jupytext
 PYTEST     := $(VENV)/bin/pytest
-COMPOSE    := docker compose -f docker/docker-compose.yml
+COMPOSE    := docker compose -f infra/docker-compose.yml
 
 .DEFAULT_GOAL := help
 
@@ -16,10 +16,10 @@ help: ## Show this help
 	      /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 # ─────────────────────────────────────────────────────────────
-# Lightweight path (default) — pure Python, no Docker, no JVM
+# Lightweight path (default) — Python APIs, no Docker, no JVM
 # ─────────────────────────────────────────────────────────────
 
-setup: ## [lite] Create venv + install deps (~180 MB, ~20s with pip / ~4s with uv)
+setup: ## [lite] Create venv + install deps (duration depends on network/cache)
 	@command -v uv >/dev/null 2>&1 && uv venv $(VENV) --python '>=3.10,<3.15' || python3 -m venv $(VENV)
 	@$(PY) -c 'import sys; raise SystemExit(0 if (3,10)<=sys.version_info[:2]<(3,15) else 1)' \
 	  || { echo "ERROR: need Python 3.10-3.14. Install 'uv' (auto-fetches one) or run: python3.12 -m venv .venv"; exit 1; }
@@ -29,7 +29,7 @@ setup: ## [lite] Create venv + install deps (~180 MB, ~20s with pip / ~4s with u
 	@echo ""
 	@echo "  ✓ Setup complete. Run 'make smoke' then 'make lab'."
 
-smoke: ## [lite] ~15-second end-to-end smoke test (Delta + Iceberg + vectors)
+smoke: ## [lite] Offline smoke test after setup (Delta + Iceberg + vectors)
 	@$(PY) scripts/verify_lite.py
 
 test: ## [lite] Run the pytest suite the instructor grades against
@@ -45,7 +45,7 @@ data: ## [lite] Generate 200K-row Bronze sample for NB4
 data-ai: ## [lite] Generate multimodal + agent-trajectory sample for NB7/NB8
 	@$(PY) scripts/generate_ai_data.py
 
-run-all: ## [lite] Execute every notebook headlessly (what CI does)
+run-all: ## [lite] Execute all lightweight notebooks and their assertions headlessly
 	@$(PY) scripts/run_all.py
 
 simulate: ## [lite] Abuse the lab the way students do (12 scenarios; SIM_FAST=1 to skip venv builds)
@@ -60,7 +60,7 @@ clean: ## [lite] Wipe venv + lakehouse data
 # because Apple's runtime has no compose plugin and no Docker socket.
 # ─────────────────────────────────────────────────────────────
 
-AC := scripts/apple_container.sh
+AC := infra/apple_container.sh
 
 apple-up: ## [apple] Start MinIO + buckets + Spark/Jupyter via Apple `container`
 	@$(AC) up

@@ -1,22 +1,21 @@
-# Bonus Challenge — Design Your Own Lakehouse
+# K4-Track02-Day18 — Bonus Design Your Own Lakehouse
 
 > 🇻🇳 Bản tiếng Việt: [`BONUS-CHALLENGE.md`](BONUS-CHALLENGE.md)
 
-**Type:** Open-ended architecture brief — separate from the core lab; entirely optional.
+**Type:** Open-ended architecture brief — separate from required work; entirely optional and **individual**.
 **Audience:** You as the *architect on call*, not as a code-writer.
 **Effort target:** 4–8 focused hours. Not a side hustle — a thoughtful afternoon.
 
-The bonus exists for students who want to push past the rote deliverable and
-build something they could actually defend in a senior design review. There's
-no score attached. The reward is the work itself, the feedback you'll get on
-your judgment, and a portfolio piece you can show to a hiring manager.
+The bonus develops architectural judgement and design-review reasoning.
+It earns **up to 10 additional points**, assessed separately under [RUBRIC.md](../RUBRIC.md);
+the final lab score is capped at 100. Omitting bonus does not reduce the required-work score.
 
 ---
 
 ## The brief
 
-Your team just inherited a hard data-storage problem. Pick one (or define your own
-— same rules apply). Write **the architecture decision your team would defend in
+You just inherited a hard data-storage problem. Pick one (or define your own
+— same rules apply). Write **the architecture decision you would defend in
 a design review**. Code is optional; **the document is the deliverable**.
 
 What we want to see is *judgment*: did you reject the obvious wrong answers for
@@ -27,7 +26,10 @@ shape of an answer we want, not "Delta is good."
 
 ## Recommended topics (pick one — or invent yours)
 
-Each is a real industrial problem. None has a single right answer.
+These are hypothetical design scenarios inspired by industrial problems.
+Numbers are inputs to the brief, not verified statistics from an actual system.
+None has a single right answer. For legal constraints, research the applicable
+current texts and state sources and assumptions; naming a law does not establish compliance.
 
 ### A. LLM observability at 1B requests/day
 A foundation-model API team logs every request/response. **1B req/day, ~5 KB
@@ -50,10 +52,11 @@ train in EU.
 (Nessie), catalog choice, multi-region replication semantics, training-data
 provenance.
 
-### C. Vietnamese ride-hailing CDC → Lakehouse (Decree 13 compliant)
+### C. Vietnamese ride-hailing CDC → Lakehouse with personal-data protection requirements
 Production Oracle DB → Debezium CDC → Lakehouse for analytics.
 **100 M trips/year, 30 K writes/sec at peak.** Driver+rider PII (phone, ID,
-GPS) in scope of **Decree 13/2023/NĐ-CP**. Analyst SLA: dashboards refreshed
+GPS) must be protected. Use **Decree 13/2023/NĐ-CP** as a starting point for
+research and identify the texts applicable at design time. Analyst SLA: dashboards refreshed
 within 60 s of source commit; ad-hoc queries p95 < 1 s. Late-arriving events
 common (network drops in remote provinces).
 *Concepts to apply:* CDC + Delta CDF, SCD Type 2, late-data handling
@@ -72,7 +75,7 @@ freshness vs staleness.
 
 ### E. Hot/warm/cold lifecycle for click-stream under a hard FinOps cap
 A consumer-app analytics team produces **10 TB/day of click events**.
-Retention is regulatory: 365 days. The CFO's storage budget is a hard
+Assume the scenario requires 365-day retention. The CFO's storage budget is a hard
 **\$8 K/mo across all tiers**. Last-7-days queries must return p95 < 2 s;
 last-90-days p95 < 30 s; > 90 days "best effort, < 5 min."
 *Concepts to apply:* partitioning strategy, S3 Standard / IA / Glacier
@@ -112,18 +115,20 @@ Use any structure you like, but the document must answer **all of these**:
 
 1. **Problem statement** (≤ 200 words). Numbers, constraints, why hard.
 2. **Architecture diagram.** Bronze→Silver→Gold layout, ingestion path, query
-   path. ASCII art or any diagramming tool. Just *one* diagram, dense.
+   path. ASCII art or any diagramming tool. Use one diagram showing at least
+   4 Day18 concepts applied to concrete design choices.
 3. **Key decisions, with rejected alternatives.** For each major choice
    (table format, catalog, partitioning, compression, lifecycle, governance),
    write: *"I chose **A**. I rejected **B** because [tradeoff]. I rejected
-   **C** because [tradeoff]."* Aim for ≥ 5 such decisions.
+   **C** because [tradeoff]."* Include at least 5 decisions with at least 2 rejected alternatives each.
 4. **Failure modes** (≥ 3). What goes wrong at 3 AM? How do you detect, and
    what's the rollback? Tie at least one to a Day 18 concept (time travel,
    schema evolution, deletion vectors, lineage).
 5. **Cost back-of-envelope.** \$/month for storage + compute. Show the math.
    "$X/TB-month × Y TB" beats "should be cheap."
 6. **What you would build first** (a one-week MVP slice). Not the whole thing
-   — the smallest shippable cut that proves the architecture works.
+   — the smallest shippable cut that proves the architecture works, including
+   acceptance criteria and a way to verify the hardest mechanism.
 
 **Optional PoC** (`submission/bonus/poc/`): a short notebook (50–150 lines)
 that demos one *non-trivial* mechanism from your design — e.g., a tokenization
@@ -135,9 +140,8 @@ spike that proves the hard part is feasible.
 
 ## What "great" looks like
 
-The instructor will write a substantive review on your submission. Strong
-submissions tend to share these traits — use them as a self-checklist before
-you submit:
+The bonus is assessed out of 10 additional points. Use the following traits
+as a self-checklist; see [RUBRIC.md](../RUBRIC.md) for the scoring criteria:
 
 | Dimension | What strong work looks like |
 |---|---|
@@ -147,8 +151,9 @@ you submit:
 | **Failure-mode rigor** | Specific 3-AM scenarios with detection + rollback, not *"we'll monitor it."* |
 | **Optional PoC quality** | If submitted: runs from a clean checkout; demonstrates the *hard* part, not the easy part. |
 
-A generic submission with no tradeoff reasoning gets a generic review. The
-work is the reward; the depth you put in is the depth you get back.
+A design that merely lists technologies without tradeoffs or feasibility evidence
+does not fully meet the bonus criteria. Code is optional; calculations and reasoning
+must be verifiable.
 
 ---
 
@@ -168,5 +173,8 @@ The first sketch is always wrong. The second one is the work.
 
 ## Submission
 
-Push to your fork at `submission/bonus/ARCHITECTURE.md`. Same PR as the core
-lab — title prefix the bonus: `[NXX] Lab18 — <Họ Tên> [+bonus]`.
+Submit your individual brief at `submission/bonus/ARCHITECTURE.md` in the same
+repository/PR as the required work.
+Repository: `K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab`.
+PR title: `[K4-Track02-Day18] HoVaTen - MSSV - Lakehouse Lab [+bonus]`.
+See [SUBMISSION.md](../SUBMISSION.md) for the destination, deadline and checklist.

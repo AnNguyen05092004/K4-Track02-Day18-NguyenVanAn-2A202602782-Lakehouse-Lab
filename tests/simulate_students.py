@@ -1,11 +1,10 @@
 """Simulate how a cohort actually uses this lab.  `make simulate`
 
-`make test` and `make run-all` prove the lab works when you do it right.
-This proves it works when you do it *wrong* — which is what 40 students do.
+Exercises selected ways students run the lab. A passing scenario only
+establishes the behaviour tested, not every rubric or runtime requirement.
 
 Each scenario rsyncs a fresh clone (no venv, no data, no .ipynb) into a
-scratch dir and abuses it. Two real bugs came out of this suite and are now
-regression-tested in tests/test_lab18.py:
+scratch dir and exercises it. The scenarios include regressions for:
 
   * NB4 died with a raw Rust `Os { code: 2 }` when `make data` was skipped.
   * `make smoke` deleted the Iceberg catalog of a notebook that was running.

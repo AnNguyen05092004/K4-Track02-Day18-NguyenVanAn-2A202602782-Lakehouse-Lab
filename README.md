@@ -1,38 +1,84 @@
-# Day 18 — Lakehouse Lab (Track 2)
+# K4-Track02-Day18-Lakehouse-Lab
 
-Lab cho **AICB-P2T2 · Ngày 18 · Data Lakehouse Architecture**.
+Lab cho **Khóa 4 · Track 02 · Day 18 · Data Lakehouse Architecture**.
+
+**Hình thức làm bài: cá nhân cho cả phần bắt buộc và bonus.** Mỗi học viên tự chạy,
+giải thích kết quả và nộp repo riêng theo [SUBMISSION.md](docs/SUBMISSION.md).
+
+## Mục tiêu học tập
+
+Sau bài lab, bạn có thể tạo bảng Delta có transaction log và schema enforcement;
+đo tác dụng của compaction/Z-order; dùng MERGE, time travel và RESTORE;
+xây dựng pipeline Bronze → Silver → Gold; quản lý bảng Iceberg qua catalog;
+đo các job maintenance; và giải thích vòng đời embeddings, version dữ liệu và provenance.
+
+**Thời lượng dự kiến:** 3–4 giờ cho phần bắt buộc, tùy cấu hình máy và thời gian phân tích kết quả.
+Bonus là phần tùy chọn, dự kiến thêm 4–8 giờ.
+
+| Tài liệu | Nội dung |
+|---|---|
+| [SUBMISSION.md](docs/SUBMISSION.md) | Tên repo, bài phải nộp, nơi nộp, deadline và kiểm tra trước khi nộp |
+| [RUBRIC.md](docs/RUBRIC.md) | Thang điểm phần bắt buộc và bonus, bằng chứng và điều kiện mất điểm |
+| [CHECKPOINTS.md](docs/CHECKPOINTS.md) | Các bước thực hiện, sản phẩm và cách tự kiểm tra |
+| [RULES.md](docs/RULES.md) | Sử dụng AI, hợp tác, nộp muộn, sửa bài và bảo mật |
 
 Tám notebook, hai nửa:
 
 * **NB1–NB4 — nền tảng.** Delta Lake ACID, OPTIMIZE/Z-ORDER, time travel, medallion Bronze→Silver→Gold.
-* **NB5–NB8 — lakehouse 2026.** Iceberg và **catalog như control plane**, 4 job maintenance bắt buộc, multimodal + vector trong bảng, agent trajectory + provenance (EU AI Act Art. 10).
+* **NB5–NB8 — lakehouse cho AI.** Iceberg và **catalog như control plane**, maintenance, multimodal + vector trong bảng, agent trajectory và provenance minh họa.
 
-Tất cả chạy **offline**: không API key, không Docker, không JVM, không tải model, không tải DuckDB extension.
+Đường lightweight chạy **offline sau khi cài dependencies**: không API key, không Docker,
+không JVM, không tải model, không tải DuckDB extension. Setup lần đầu cần mạng để cài gói;
+đường Spark tùy chọn còn cần tải container image và Maven JARs.
 
 ---
 
 ## Quick Start
 
 ```bash
-git clone https://github.com/VinUni-AI20k/Day18-Track2-Lakehouse-Lab.git
-cd Day18-Track2-Lakehouse-Lab
-make setup      # ~20s pip / ~4s uv
-make smoke      # ~5s  — 9 checks, hoàn toàn offline
+git clone https://github.com/VinUni-AI20k/K4-Track02-Day18-Lakehouse-Lab.git
+cd K4-Track02-Day18-Lakehouse-Lab
+make setup      # tạo venv và cài dependencies; lần đầu có thể mất vài phút
+make smoke      # 9 checks, offline sau khi cài dependencies
 make data       # Bronze cho NB4
 make data-ai    # corpus multimodal + agent traces cho NB7/NB8
 make lab        # http://localhost:8888
 ```
 
-Yêu cầu: **Python 3.10 – 3.14**. Không cần gì khác.
+Chuẩn bị **Python 3.10–3.14**, Git và mạng cho lần cài đặt đầu tiên; khuyến nghị Python 3.11
+để dùng phiên bản đã kiểm tra trong lần rà soát này. Các lệnh `make` cần GNU Make,
+công cụ shell Unix và cấu trúc venv của Linux/macOS; trên Windows có thể dùng WSL
+hoặc chạy Python trực tiếp bằng PowerShell theo hướng dẫn sau.
 
-> **Đã sửa (v2):** phiên bản trước chặn Python 3.14 vì `pyarrow` chưa có wheel.
-> Toàn bộ stack nay đã có wheel 3.14 — kiểm chứng ngày 2026-08-17 trên cả 3.12 và 3.14.
+### Chạy lightweight trên Windows PowerShell
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe scripts/verify_lite.py
+.\.venv\Scripts\python.exe scripts/generate_data_lite.py
+.\.venv\Scripts\python.exe scripts/generate_ai_data.py
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe scripts/run_all.py
+# Chuyển riêng 8 notebook, bỏ helper _setup.py
+Get-ChildItem notebooks/[0-9]*.py | ForEach-Object {
+    .\.venv\Scripts\python.exe -m jupytext --to notebook $_.FullName
+}
+.\.venv\Scripts\python.exe -m jupyter lab --notebook-dir=notebooks --no-browser
+```
+
+Nếu gặp lỗi encoding khi in ký tự Unicode trên Windows, đặt `$env:PYTHONUTF8 = '1'`
+trước khi chạy scripts. Smoke test, 24 tests và cả 8 notebook lightweight đã được
+kiểm tra trên Windows với Python 3.11. WSL phù hợp nếu muốn dùng nguyên các lệnh `make`.
+
+Khoảng phiên bản Python được cấu hình là 3.10–3.14. Lần rà soát hiện tại kiểm tra
+Python 3.11 trên Windows; chưa chạy lại toàn bộ khoảng phiên bản này.
 
 Kiểm tra mọi thứ chạy được trước khi nộp:
 
 ```bash
-make test       # 22 pytest, ~1s
-make run-all    # chạy cả 8 notebook headless, ~10s
+make test       # 24 pytest; thời gian tùy máy
+make run-all    # chạy cả 8 notebook headless; thời gian tùy máy
 ```
 
 ---
@@ -47,10 +93,12 @@ make run-all    # chạy cả 8 notebook headless, ~10s
 | `04_medallion` | Bronze→Silver→Gold cho LLM observability | Silver < Bronze (dedup); Gold p50/p95/cost ≥ 7 ngày | §8 |
 | `05_iceberg_catalog` | **Iceberg + catalog là control plane** | hidden-partition pruning ≥ 5×; field-ID bền qua rename; 2 partition spec cùng tồn tại | §4, §12 |
 | `06_maintenance` | **4 job bắt buộc** + job thứ 5 | compaction ≥ 10× ít file; clustering skip ≥ 50%; orphan + snapshot expiry | §6, §12 |
-| `07_vectors_multimodal` | Blob inline vs pointer; embedding trong bảng | amplification khi random-read; int8 nhỏ 4×; **lifecycle bug** tái hiện được | §11 |
-| `08_agents_provenance` | Trajectory, MCP 2026-07-28, provenance | pin version cho training run; 4 rổ Art. 10 thành partition | §11, §12 |
+| `07_vectors_multimodal` | Blob inline vs pointer; embedding trong bảng | amplification khi random-read; int8 nhỏ ≥ 3×; **lifecycle bug** tái hiện được | §11 |
+| `08_agents_provenance` | Trajectory, lớp MCP mô phỏng, provenance | pin version; kiểm tra số bước replay; 4 bucket minh họa thành partition | §11, §12 |
 
-Mỗi notebook tự kết thúc bằng một khối `assert` trên tiêu chí đậu — `make run-all` vì thế là **cùng một cổng** mà giảng viên chạy khi chấm.
+`make run-all` chạy cả 8 notebook và kiểm tra các `assert` có trong mã.
+Bạn vẫn cần đối chiếu output với [RUBRIC.md](docs/RUBRIC.md): chạy thành công chưa tự động chứng minh
+mọi tiêu chí chấm, đặc biệt chất lượng Gold, bằng chứng schema enforcement và phần giải thích kết quả.
 
 ---
 
@@ -59,8 +107,8 @@ Mỗi notebook tự kết thúc bằng một khối `assert` trên tiêu chí đ
 Lab này không chỉ minh hoạ slide. Ba kết quả dưới đây là **đo thật trên máy bạn**, và đều là bẫy production:
 
 1. **`VACUUM` không dọn orphan chưa từng commit.** `deltalake` (Rust/Python) chỉ thu hồi file đã bị *tombstone* trong log. File do job crash để lại chưa từng vào log → vô hình với vacuum ở mọi retention. NB6 đo, rồi bắt bạn tự viết phép hiệu tập hợp.
-2. **`expire_snapshots` của Iceberg chỉ đụng metadata.** 20 → 3 snapshot nhưng **0 file avro bị xoá**; metadata còn *phình ra*. Job 3 và Job 4 là một **cặp** — chạy expiry mà không quét orphan là lý do "đã expire mà hoá đơn S3 không giảm".
-3. **Delta không có kiểu vector cố định chiều.** `fixed_size_list<float>[256]` ghi xuống rồi đọc lên thành `list<float>`; phải cast lúc query. Đó chính là lý do Hudi 1.2 thêm cột `VECTOR(dim, type)` hạng nhất.
+2. **Snapshot expiry trong đường PyIceberg của NB6 chưa xóa file vật lý.** Notebook đo số snapshot giảm 20 → 3 nhưng manifest lists vẫn còn trên đĩa, rồi dọn các file không còn được tham chiếu. Đây là hành vi của API và phiên bản thư viện trong lab, không phải kết luận cho mọi engine Iceberg.
+3. **Đường Delta của NB7 không giữ kiểu vector cố định chiều.** `fixed_size_list<float>[256]` ghi xuống rồi đọc lên thành `list<float>`; notebook cast về kiểu mảng cố định khi query DuckDB.
 
 Hai điều đầu được "ghim" bằng test canary trong `tests/` — nếu thư viện đổi hành vi, test đỏ và notebook phải sửa theo.
 
@@ -69,12 +117,12 @@ Hai điều đầu được "ghim" bằng test canary trong `tests/` — nếu t
 ## Lệnh `make`
 
 ```
-make setup     Tạo venv + cài deps (~180 MB)
-make smoke     9 check offline (~5s)
-make test      22 pytest (~1s)
+make setup     Tạo venv + cài dependencies
+make smoke     9 check offline sau khi cài dependencies
+make test      24 pytest (thời gian tùy máy)
 make data      Bronze 200K dòng cho NB4
 make data-ai   Corpus multimodal + agent traces cho NB7/NB8
-make run-all   Chạy cả 8 notebook headless — cổng chấm điểm
+make run-all   Chạy cả 8 notebook headless và các assertion có trong mã
 make simulate  Mô phỏng 12 kịch bản học viên (SIM_FAST=1 để bỏ 2 kịch bản dựng venv)
 make lab       Mở Jupyter Lab
 make clean     Xoá venv + _lakehouse/
@@ -83,7 +131,9 @@ make spark-up / spark-smoke / spark-data / spark-down / spark-clean
                Đường Spark/Docker tuỳ chọn (chỉ phủ NB1–NB4)
 ```
 
-**Notebook lưu dạng Jupytext `.py`** (nhẹ, dễ review). `make setup` / `make lab` tự sinh `.ipynb`; sửa trong Jupyter, Jupytext đồng bộ ngược lại.
+**Notebook lưu dạng Jupytext `.py`** (nhẹ, dễ review). `make setup` / `make lab` sinh `.ipynb`.
+Nếu chỉnh sửa notebook, cần lưu/đồng bộ lại mã nguồn phù hợp; khi nộp, giữ `.ipynb` đã chạy
+trong `submission/notebooks/` để output được đưa vào Git. Xem [SUBMISSION.md](docs/SUBMISSION.md).
 
 ---
 
@@ -91,30 +141,25 @@ make spark-up / spark-smoke / spark-data / spark-down / spark-clean
 
 | Path | Stack | Setup | RAM | Phủ |
 |---|---|---|---|---|
-| **Lightweight (mặc định)** | `deltalake` 1.x + `pyiceberg` + DuckDB + Polars | `make setup`, ~20 s | ~600 MB | **cả 8 NB** |
+| **Lightweight (mặc định)** | `deltalake` 1.x + `pyiceberg` + DuckDB + Polars | `make setup`; tùy mạng/cache | ~600 MB | **cả 8 NB** |
 | **Spark (Docker Compose)** | PySpark 3.5 + delta-spark + MinIO | `make spark-up`, ~3–8 phút | ~6 GB | 4 NB PySpark **+ cả 8 NB lightweight** |
 | **Spark (Apple `container`)** | y hệt trên, chạy bằng `container run` | `make apple-up`, ~3–8 phút | ~6 GB | y hệt trên |
 
-Cả hai ghi ra **cùng định dạng Delta trên đĩa** — đổi qua lại lúc nào cũng đọc được.
-Container Spark nay cài cả stack lightweight, nên bạn chạy được **cả 12 notebook**
-trong đó (4 bản PySpark ở `notebooks-spark/` + 8 bản lightweight ở `notebooks/`).
-
-> **Đường Spark đã được kiểm chứng đầu-cuối 17/8/2026** (Docker qua lima, rootless):
-> `verify.py` xanh (Spark→MinIO→Delta→time travel), `generate_data.py` ghi 1 triệu dòng,
-> 4/4 notebook PySpark và 8/8 notebook lightweight chạy được trong container.
-> Trước đó đường này **hỏng hoàn toàn** — xem mục dưới.
+Các con số RAM và thời gian Spark là ước lượng, tùy máy và cache tải xuống.
+Cả hai dùng định dạng Delta, nhưng khả năng đọc chéo còn phụ thuộc protocol,
+table features và phiên bản engine. Lightweight lưu cục bộ, Spark dùng MinIO;
+không tự chia sẻ cùng bảng chỉ bằng việc đổi đường chạy.
+Container Spark được cấu hình cài cả stack lightweight để phục vụ 4 bản PySpark
+ở `notebooks-spark/` và 8 bản lightweight ở `notebooks/`. Lần rà soát hiện tại
+chỉ kiểm tra cấu hình Compose và cú pháp shell, chưa chạy lại container đầu-cuối.
 
 ---
 
 ### Chạy Spark bằng Apple `container` (macOS 15+, Apple silicon)
 
-[`apple/container`](https://github.com/apple/container) **không chạy được**
-`docker-compose.yml`: nó không có compose plugin (`container compose` →
-*Plugin 'container-compose' not found*) và **không expose Docker API socket**,
-nên cả `docker` lẫn `docker compose` đều không điều khiển được.
-
-`scripts/apple_container.sh` dựng **đúng stack 3 service đó** bằng `container run`.
-File compose **giữ nguyên** — hai đường song song, chọn cái bạn có:
+Đường [`apple/container`](https://github.com/apple/container) dùng
+`infra/apple_container.sh` để dựng MinIO, khởi tạo buckets và Spark/Jupyter bằng
+`container run`. Các target `apple-*` gọi script này; các target `spark-*` dùng Docker Compose:
 
 ```bash
 brew install container
@@ -128,18 +173,17 @@ make apple-status   # xem container + IP của MinIO
 make apple-down     # dừng (giữ dữ liệu MinIO)  ·  apple-clean = xoá luôn
 ```
 
-**Khác biệt kỹ thuật duy nhất:** Compose phân giải tên service `minio` qua DNS
-nội bộ. Apple `container` **không phân giải tên** trừ khi bạn tạo DNS domain, mà
-`container system dns create` **cần sudo**. Nên script đọc IP của MinIO bằng
-`container inspect` rồi truyền vào biến `MINIO_ENDPOINT`;
-`scripts/spark_session.py` đọc biến này và **mặc định vẫn là
-`http://minio:9000`** — đường compose không đổi hành vi.
+Script đọc IP của MinIO bằng `container inspect` rồi truyền vào `MINIO_ENDPOINT`.
+`scripts/spark_session.py` đọc biến này và mặc định là `http://minio:9000`
+cho đường Compose. Đường Apple chưa được chạy lại trong lần rà soát hiện tại.
 
 ---
 
 ## Deliverable
 
-Nộp 8 notebook đã chạy (giữ output) + ảnh chụp. Chi tiết thang điểm: [`rubric.md`](rubric.md) — 100 điểm → Track-2 Daily Lab (30%).
+Nộp 8 notebook đã chạy (giữ output), bằng chứng và reflection theo [SUBMISSION.md](docs/SUBMISSION.md).
+Phần bắt buộc chấm trên **100 điểm**, bonus cộng tối đa **10 điểm**; điểm lab cuối cùng tối đa 100.
+Chi tiết tại [RUBRIC.md](docs/RUBRIC.md).
 
 1. **NB1** — `_delta_log/` JSON; bad-schema write bị chặn; `schema_mode="merge"` thêm cột `tier`
 2. **NB2** — speedup ≥ 3× **hoặc** files-pruned ≥ 10×
@@ -148,17 +192,21 @@ Nộp 8 notebook đã chạy (giữ output) + ảnh chụp. Chi tiết thang đi
 5. **NB5** — pruning ratio ≥ 5× khi lọc trên `ts`; `latency_millis` giữ nguyên `field_id`; ≥ 2 `spec_id`
 6. **NB6** — 4 job chạy đủ, kèm số trước/sau; 3 orphan tìm và xoá được
 7. **NB7** — amplification random-read; int8 nhỏ ≥ 3×; **tái hiện lifecycle bug** (external index còn trả dữ liệu đã xoá)
-8. **NB8** — Silver partition theo `agent_version`; replay đúng version đã pin; 4 rổ Art. 10 thành partition
+8. **NB8** — Silver partition theo `agent_version`; replay có số bước khớp version đã pin;
+   4 bucket provenance minh họa thành partition. Xem giới hạn mô phỏng trong [CHECKPOINTS.md](docs/CHECKPOINTS.md).
 
-Ngoài ra: `submission/REFLECTION.md` (≤ 200 từ) — trong "Top 5 Lakehouse Anti-Patterns", team bạn dễ vướng cái nào nhất, vì sao?
+Ngoài ra: `submission/REFLECTION.md` (≤ 200 từ) — trong "Top 5 Lakehouse Anti-Patterns",
+dữ liệu hoặc hệ thống bạn quan tâm dễ vướng cái nào nhất, vì sao?
 
 ---
 
-## Bonus Challenge (tuỳ chọn, không tính điểm)
+## Bonus Challenge (tùy chọn, cộng tối đa 10 điểm)
 
-Một **architecture brief** mở: chọn một bài toán dữ liệu khó thật (LLM observability 1B req/ngày, CDC tuân thủ Nghị định 13, corpus nghìn tỷ token, multimodal RAG, tiering chặn trần FinOps, migration catalog…) và thiết kế chiến lược lưu trữ bạn dám bảo vệ trong design review.
+Một **architecture brief** mở: chọn một tình huống dữ liệu khó (LLM observability 1B req/ngày, CDC với yêu cầu bảo vệ dữ liệu cá nhân, corpus nghìn tỷ token, multimodal RAG, tiering theo ngân sách FinOps, migration catalog…) và thiết kế chiến lược lưu trữ bạn có thể bảo vệ trong design review.
 
-Tài liệu là deliverable; code tuỳ chọn. Bài nộp được nhận xét viết tay, tập trung vào **phán đoán**: có nêu phương án đã loại và lý do không? Số liệu có thực tế không? Xem [`BONUS-CHALLENGE.md`](BONUS-CHALLENGE.md) (VI) · [`BONUS-CHALLENGE-EN.md`](BONUS-CHALLENGE-EN.md) (EN).
+Tài liệu là deliverable; code tùy chọn. Bonus được chấm riêng theo [RUBRIC.md](docs/RUBRIC.md),
+tập trung vào quyết định kiến trúc, alternatives, failure modes và phép tính chi phí.
+Xem [BONUS-CHALLENGE.md](docs/bonus/BONUS-CHALLENGE.md) (VI) · [BONUS-CHALLENGE-EN.md](docs/bonus/BONUS-CHALLENGE-EN.md) (EN).
 
 ---
 
@@ -166,9 +214,16 @@ Tài liệu là deliverable; code tuỳ chọn. Bài nộp được nhận xét 
 
 ```
 .
-├── Makefile · README.md · rubric.md
+├── README.md · Makefile · pytest.ini
 ├── requirements.txt          # lightweight: deltalake 1.x, pyiceberg, duckdb, polars, numpy
-├── pytest.ini
+├── docs/                     # hướng dẫn học và nộp bài
+│   ├── SUBMISSION.md · RUBRIC.md · CHECKPOINTS.md · RULES.md
+│   └── bonus/
+│       └── BONUS-CHALLENGE.md · BONUS-CHALLENGE-EN.md
+├── infra/                    # container và script khởi động
+│   ├── docker-compose.yml
+│   ├── setup_spark.sh
+│   └── apple_container.sh
 ├── notebooks/                # ← đường lightweight (mặc định)
 │   ├── 01_delta_basics.py        05_iceberg_catalog.py
 │   ├── 02_optimize_zorder.py     06_maintenance.py
@@ -182,9 +237,15 @@ Tài liệu là deliverable; code tuỳ chọn. Bài nộp được nhận xét 
 │   ├── verify_lite.py            # make smoke
 │   ├── run_all.py                # make run-all
 │   └── spark_session.py · generate_data.py · verify.py
-├── tests/test_lab18.py       # make test
-└── docker/docker-compose.yml
+└── tests/                    # kiểm thử và mô phỏng cách học viên sử dụng lab
+    ├── test_lab18.py
+    └── simulate_students.py
 ```
+
+`scripts/` chứa helper Python, sinh dữ liệu và lệnh kiểm tra/chạy notebook.
+`infra/` chứa cấu hình Docker và script shell: nếu không dùng `make`, chạy
+`bash infra/setup_spark.sh` để dựng đường Spark, hoặc `bash infra/apple_container.sh up`
+trên macOS có Apple `container`.
 
 ---
 
@@ -197,55 +258,35 @@ Tài liệu là deliverable; code tuỳ chọn. Bài nộp được nhận xét 
 | `No function matches array_cosine_similarity(FLOAT[], …)` | Thiếu cast: `emb::FLOAT[256]`. Delta trả về list biến chiều — xem ghi chú trong NB7 |
 | NB2 speedup < 3× | Bình thường khi RAM thấp; tiêu chí cho phép dùng files-pruned ≥ 10× thay thế |
 | Quên `make data` / `make data-ai` | Không sao — NB4/NB7/NB8 tự sinh dữ liệu thiếu khi chạy |
-| Mở nhiều notebook cùng lúc trong Jupyter | An toàn: NB5/NB6/NB8 và `make smoke` mỗi cái dùng **catalog Iceberg riêng** |
-| Máy chặn mạng hoàn toàn | Vẫn chạy được. Nếu gặp lỗi tải extension, bạn đang gọi `delta_scan()` — lab dùng Arrow thay thế |
+| Mở nhiều notebook cùng lúc trong Jupyter | NB5/NB6/NB8 và smoke dùng catalog Iceberg riêng. Sinh dữ liệu dùng chung trước; tránh chạy đồng thời hai bản của cùng notebook hoặc `make clean` khi đang chạy |
+| Máy chặn mạng hoàn toàn | Lightweight chạy offline sau khi cài đủ dependencies. Lab dùng Arrow, không cần tải extension cho `delta_scan()` |
 
 ---
 
 ## Submission
 
-Fork repo → push 8 notebook đã chạy + `submission/REFLECTION.md` → PR về upstream, title `[NXX] Lab18 — <Họ Tên>`.
+Repo đề bài: [K4-Track02-Day18-Lakehouse-Lab](https://github.com/VinUni-AI20k/K4-Track02-Day18-Lakehouse-Lab).
+Tên repo bài nộp, cấu trúc file, nơi nộp và deadline được quy định tại [SUBMISSION.md](docs/SUBMISSION.md).
 
 ---
 
 ## Đã kiểm thử như thế nào
 
-Ngoài `make test` / `make run-all`, lab được chạy qua một bộ **mô phỏng học viên** 12 kịch bản —
-những thứ học viên làm mà tác giả không làm:
+Lần kiểm tra ngày 03/10/2026 trên Windows, Python 3.11:
 
-chạy notebook **ngược thứ tự** · chạy lại lần hai · **quên `make data`** · cwd là `notebooks/`
-(mặc định của Jupyter) · **mở 2 notebook cùng lúc** · chạy `make smoke` khi notebook đang chạy ·
-**mất mạng hoàn toàn** · máy đang tải nặng CPU · thực thi `.ipynb` qua `nbconvert` ·
-`make clean` giữa chừng · **Python 3.10** (cũ nhất) · **`pip` thuần, không `uv`**.
+- Smoke test: **9/9 PASS**.
+- Pytest: **24/24 PASS**.
+- Lightweight notebooks: **8/8 PASS**, khoảng 29 giây trên máy kiểm tra.
+- Docker Compose: cấu hình hợp lệ và bind mount trỏ đúng repo; các script shell qua kiểm tra cú pháp.
 
-Chạy lại bất cứ lúc nào: `make simulate`. Hai lỗi thật đã tìm ra và sửa từ bộ này: NB4 chết với lỗi Rust thô khi thiếu Bronze (nay tự sinh),
-và `make smoke` xoá mất catalog của notebook đang chạy (nay mỗi notebook một catalog riêng).
-Cả hai đều có test hồi quy trong `tests/`.
+Chưa chạy lại Spark/Apple container đầu-cuối hoặc bộ mô phỏng 12 kịch bản trong
+lần kiểm tra này. Không dùng các kết quả lightweight để suy ra các đường đó đã PASS.
 
-### Đường Spark: 4 lỗi có sẵn, nay đã sửa
-
-Lần đầu thực sự khởi động Docker cho lab này (17/8/2026) lộ ra rằng đường Spark
-**chưa từng chạy được** trên Docker Compose hiện đại. Bốn lỗi độc lập, tất cả đều
-có từ trước:
-
-1. **Compose interpolation** — `${f%.py}` trong khối `command:` bị Compose hiểu là
-   biến, báo `invalid interpolation format` và **stack không lên được**. Phải nhân
-   đôi dấu `$` (kể cả trong dòng *comment* — Compose nội suy cả comment).
-2. **`jupytext: command not found` (exit 127)** — `pip install --user` đặt script vào
-   `~/.local/bin`, không nằm trong PATH; `set -e` giết container trước khi Jupyter chạy.
-3. **`PYTHONPATH` bị ghi đè** — image này expose `pyspark` *chỉ* qua `PYTHONPATH`;
-   compose đặt `PYTHONPATH: /workspace/scripts` nên **`import pyspark` hỏng ở mọi nơi**.
-   Nay nối thêm đường dẫn Spark của image thay vì thay thế.
-4. **Ivy cache không ghi được** — named volume gắn ở `~/.ivy2` (đường dẫn *không có*
-   trong image) nên Docker tạo nó thuộc `root`; Ivy chết khi resolve `delta-spark`,
-   JVM thoát trước khi Py4J gateway lên (`JAVA_GATEWAY_EXITED`). Nay trỏ
-   `spark.jars.ivy` vào `~/.cache/ivy` — thư mục *có* trong image nên volume thừa
-   kế quyền của `jovyan`.
-
-Ngoài ra việc convert `.py`→`.ipynb` nay là *best-effort*: trên host Linux mà UID
-khác 1000, bind mount không ghi được — trước đây điều đó giết container, giờ chỉ
-in cảnh báo và Jupyter vẫn lên.
+`make simulate` chạy bộ mô phỏng gồm thứ tự notebook, chạy lại, thiếu dữ liệu,
+thư mục làm việc, chạy đồng thời, offline, tải CPU, thực thi `.ipynb`, clean,
+Python 3.10 và pip. Bộ này cần môi trường Unix/WSL, `rsync` và `uv`;
+`SIM_FAST=1 make simulate` bỏ hai kịch bản dựng venv.
 
 ---
 
-© VinUniversity AICB program. Bám sát Track 2 Day 18 slide (55 trang, bản 8/2026).
+© VinUniversity AICB program. Tài liệu được điều chỉnh cho K4-Track02-Day18.

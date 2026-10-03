@@ -1,22 +1,21 @@
-# Bonus Challenge — Tự Thiết Kế Lakehouse
+# K4-Track02-Day18 — Bonus Tự Thiết Kế Lakehouse
 
 > 🇬🇧 English version: [`BONUS-CHALLENGE-EN.md`](BONUS-CHALLENGE-EN.md)
 
-**Loại:** Architecture brief mở — tách khỏi lab chính, hoàn toàn tự nguyện.
+**Loại:** Architecture brief mở — tách khỏi phần bắt buộc, hoàn toàn tự nguyện và **làm cá nhân**.
 **Đối tượng:** Bạn vào vai *architect on-call*, không phải code-writer.
 **Effort target:** 4–8 giờ tập trung. Không phải side-hustle — một buổi chiều suy nghĩ kỹ.
 
-Bonus dành cho học viên muốn vượt qua deliverable rote và xây dựng thứ có thể
-bảo vệ trong một senior design review thật. **Không có điểm số.** Phần thưởng
-là chính công việc đó, là feedback bạn nhận về *judgment* của mình, và là một
-portfolio piece có thể đem cho hiring manager xem.
+Bonus dành cho học viên muốn luyện quyết định kiến trúc và bảo vệ một thiết kế
+trong design review. Bài được cộng **tối đa 10 điểm**, chấm riêng theo [RUBRIC.md](../RUBRIC.md);
+điểm lab cuối cùng tối đa 100. Không làm bonus không mất điểm phần bắt buộc.
 
 ---
 
 ## Đề bài
 
-Team bạn vừa được giao một bài toán data-storage khó. Chọn một (hoặc tự định
-nghĩa — quy tắc giống nhau). Viết **quyết định kiến trúc mà team bạn sẽ bảo
+Bạn vừa được giao một bài toán data-storage khó. Chọn một (hoặc tự định
+nghĩa — quy tắc giống nhau). Viết **quyết định kiến trúc mà bạn sẽ bảo
 vệ trong design review**. Code optional; **document is the deliverable**.
 
 Cái chúng tôi muốn thấy là *judgment*: bạn có loại bỏ được những lựa chọn sai
@@ -27,8 +26,10 @@ hiển nhiên với lý do đúng không? *"Tôi xem xét Iceberg nhưng chọn 
 
 ## Topics gợi ý (chọn 1 — hoặc tự đặt)
 
-Mỗi topic là một bài toán công nghiệp thật. Không topic nào có một lời giải
-duy nhất.
+Các topic là tình huống thiết kế giả định lấy cảm hứng từ bài toán công nghiệp;
+số liệu là đầu vào của đề, không phải thống kê của một hệ thống đã xác minh.
+Không topic nào có một lời giải duy nhất. Với ràng buộc pháp lý, tra cứu văn bản
+đang áp dụng, ghi nguồn và phạm vi giả định trong bài; tên một luật không chứng minh thiết kế đã tuân thủ.
 
 ### A. LLM observability ở quy mô 1B requests/ngày
 Một foundation-model API team log mọi request/response. **1B req/ngày,
@@ -50,11 +51,12 @@ downstream với corpus đã sửa. Hai region: scrape ở US, train ở EU.
 (Nessie), catalog choice, multi-region replication semantics, training-data
 provenance.
 
-### C. CDC từ ride-hailing Việt Nam → Lakehouse (tuân thủ Decree 13)
+### C. CDC từ ride-hailing Việt Nam → Lakehouse với yêu cầu bảo vệ dữ liệu cá nhân
 Production Oracle DB → Debezium CDC → Lakehouse cho analytics.
 **100 triệu chuyến/năm, 30 K writes/giây ở peak.** PII của tài xế + hành
-khách (số điện thoại, CMND, GPS) trong phạm vi điều chỉnh của
-**Nghị định 13/2023/NĐ-CP**. SLA cho analyst: dashboard refresh trong 60 giây
+khách (số điện thoại, giấy tờ định danh, GPS) cần được bảo vệ. Đề bài dùng
+**Nghị định 13/2023/NĐ-CP** làm điểm xuất phát để nghiên cứu; xác định thêm
+văn bản đang áp dụng tại thời điểm thiết kế. SLA cho analyst: dashboard refresh trong 60 giây
 kể từ source commit; ad-hoc query p95 < 1 giây. Sự kiện đến muộn xảy ra
 thường xuyên (mất mạng ở tỉnh xa).
 *Concepts cần áp dụng:* CDC + Delta CDF, SCD Type 2, late-data handling
@@ -73,7 +75,7 @@ freshness vs staleness.
 
 ### E. Lifecycle hot/warm/cold cho click-stream với FinOps cap cứng
 Một consumer-app analytics team sinh ra **10 TB/ngày click events**.
-Retention bắt buộc theo luật: 365 ngày. Budget storage của CFO là cap cứng
+Giả định đề bài yêu cầu retention 365 ngày. Budget storage của CFO là cap cứng
 **\$8 K/tháng across all tiers**. Query trong 7 ngày gần nhất phải p95 < 2 s;
 trong 90 ngày p95 < 30 s; > 90 ngày *"best effort, < 5 phút."*
 *Concepts cần áp dụng:* partitioning strategy, S3 Standard / IA / Glacier
@@ -115,18 +117,19 @@ sau**:
 1. **Problem statement** (≤ 200 từ). Numbers, constraints, vì sao khó.
 2. **Architecture diagram.** Bronze→Silver→Gold layout, ingestion path,
    query path. ASCII art hoặc diagramming tool nào cũng được. Chỉ **một**
-   diagram, dense.
+   diagram, thể hiện ít nhất 4 concept Day18 được áp dụng vào lựa chọn cụ thể.
 3. **Quyết định chính, kèm alternatives đã loại.** Cho mỗi lựa chọn lớn
    (table format, catalog, partitioning, compression, lifecycle, governance),
    viết: *"Tôi chọn **A**. Tôi loại **B** vì [tradeoff]. Tôi loại **C**
-   vì [tradeoff]."* Hướng tới ≥ 5 quyết định như vậy.
+   vì [tradeoff]."* Cần ít nhất 5 quyết định, mỗi quyết định có ít nhất 2 alternatives bị loại.
 4. **Failure modes** (≥ 3). Cái gì hỏng lúc 3 giờ sáng? Bạn detect thế nào,
    và rollback ra sao? Ít nhất một failure mode phải tie với concept Day 18
    (time travel, schema evolution, deletion vectors, lineage).
 5. **Ước lượng chi phí back-of-envelope.** \$/tháng cho storage + compute.
    Show the math. *"$X/TB-tháng × Y TB"* hơn đứt *"chắc rẻ thôi."*
 6. **Bạn sẽ build cái gì trước** (slice MVP một tuần). Không phải toàn bộ —
-   slice nhỏ nhất shippable chứng minh kiến trúc work.
+   slice nhỏ nhất shippable chứng minh kiến trúc work, với tiêu chí nghiệm thu và
+   cách kiểm tra mechanism khó nhất.
 
 **PoC optional** (`submission/bonus/poc/`): một notebook ngắn (50–150 dòng)
 demo một mechanism *non-trivial* trong design — ví dụ tokenization function
@@ -138,8 +141,8 @@ nhất là feasible.
 
 ## Thế nào là "tốt"
 
-Instructor sẽ viết review chi tiết cho submission của bạn. Submission mạnh
-thường có các đặc điểm sau — dùng làm self-checklist trước khi nộp:
+Bài được đánh giá theo rubric bonus tối đa 10 điểm. Các đặc điểm dưới đây là
+self-checklist trước khi nộp; chi tiết điểm tại [RUBRIC.md](../RUBRIC.md):
 
 | Dimension | "Tốt" trông như thế nào |
 |---|---|
@@ -149,8 +152,8 @@ thường có các đặc điểm sau — dùng làm self-checklist trước khi
 | **Failure-mode rigor** | Kịch bản 3-giờ-sáng cụ thể với detection + rollback, không phải *"chúng tôi sẽ monitor."* |
 | **Chất lượng PoC (nếu có)** | Nếu nộp: chạy được từ clean checkout; demo phần *khó* chứ không phải phần dễ. |
 
-Submission generic không có tradeoff reasoning sẽ nhận review generic. Công
-việc là phần thưởng; bạn đầu tư bao nhiêu thì nhận lại bấy nhiêu.
+Thiết kế chỉ nêu tên công nghệ mà thiếu tradeoff và bằng chứng khả thi không
+đáp ứng đầy đủ tiêu chí bonus. Code tùy chọn, nhưng phép tính và lập luận phải kiểm tra được.
 
 ---
 
@@ -170,5 +173,7 @@ Bản sketch đầu tiên luôn sai. Bản thứ hai mới là *the work*.
 
 ## Submission
 
-Push lên fork của bạn tại `submission/bonus/ARCHITECTURE.md`. Cùng PR với
-core lab — prefix title bonus: `[NXX] Lab18 — <Họ Tên> [+bonus]`.
+Nộp bài cá nhân tại `submission/bonus/ARCHITECTURE.md` trong cùng repo/PR với phần bắt buộc.
+Tên repo: `K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab`.
+Tiêu đề PR: `[K4-Track02-Day18] HoVaTen - MSSV - Lakehouse Lab [+bonus]`.
+Nơi nộp, deadline và checklist tại [SUBMISSION.md](../SUBMISSION.md).

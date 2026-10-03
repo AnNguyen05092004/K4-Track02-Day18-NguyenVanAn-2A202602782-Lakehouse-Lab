@@ -5,7 +5,7 @@
 #
 # WHY THIS EXISTS
 # ---------------
-# `docker/docker-compose.yml` remains the primary Spark path and is unchanged.
+# `infra/docker-compose.yml` remains the primary Spark path and is unchanged.
 # Apple's `container` cannot run it: there is no compose plugin
 # (`container compose` -> "Plugin 'container-compose' not found") and no
 # Docker API socket, so neither `docker` nor `docker compose` can drive it.
@@ -20,7 +20,7 @@
 # scripts/spark_session.py honours that variable and defaults to
 # http://minio:9000, so the compose path behaves exactly as before.
 #
-# Usage: scripts/apple_container.sh {up|down|clean|smoke|data|status|logs|shell}
+# Usage: infra/apple_container.sh {up|down|clean|smoke|data|status|logs|shell}
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -172,7 +172,7 @@ up() {
         jupytext==1.16.4 \
         faker==30.3.0 \
         "deltalake>=1.0,<2.0" \
-        "pyiceberg[sql-sqlite,pyarrow]>=0.9,<1.0" \
+        "pyiceberg[sql-sqlite,pyarrow,pyiceberg-core]>=0.9,<1.0" \
         "duckdb>=1.1,<2.0" \
         "polars>=1.13.2,<2.0"
       echo ">> Converting .py -> .ipynb (best effort) ..."
@@ -222,7 +222,7 @@ up() {
   echo "   Jupyter  http://localhost:8888/lab?token=$JUPYTER_TOKEN"
   echo "   MinIO    http://localhost:9001  ($MINIO_USER / $MINIO_PASS)"
   echo
-  echo "   Next:  scripts/apple_container.sh smoke"
+  echo "   Next:  infra/apple_container.sh smoke"
 }
 
 down() {
@@ -242,14 +242,14 @@ clean() {
 
 smoke() {
   require_container
-  exists "$SPARK_NAME" || die "stack not running — run: scripts/apple_container.sh up"
+  exists "$SPARK_NAME" || die "stack not running — run: infra/apple_container.sh up"
   log "Running scripts/verify.py inside the Spark container ..."
   container exec "$SPARK_NAME" python /workspace/scripts/verify.py
 }
 
 data() {
   require_container
-  exists "$SPARK_NAME" || die "stack not running — run: scripts/apple_container.sh up"
+  exists "$SPARK_NAME" || die "stack not running — run: infra/apple_container.sh up"
   log "Generating 1M-row Bronze via Spark ..."
   container exec "$SPARK_NAME" python /workspace/scripts/generate_data.py
 }

@@ -33,7 +33,7 @@ reset(table_path)  # idempotent
 #
 # 200 tiny appends → 200 small files. Realistic streaming-ingestion shape.
 # Each batch is 5K rows × wider schema (≈200 B/row payload) so post-compaction
-# we still have ≥10 files even with a 4 MB target — required for Z-order
+# we still have multiple files with a 256 KB target — required for Z-order
 # skipping to actually skip something in the benchmark.
 
 # %%
@@ -91,7 +91,7 @@ before = bench("BEFORE OPTIMIZE")
 # %% [markdown]
 # ## 3. OPTIMIZE (compact small files) + Z-ORDER (co-locate by user_id)
 #
-# `target_size` capped at 8 MB so we keep ~10 files post-compact — enough
+# `target_size` is 256 KB so we keep multiple files post-compact — enough
 # for Z-order's file-skipping to actually skip something.
 
 # %%
