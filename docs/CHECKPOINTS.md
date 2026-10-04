@@ -9,12 +9,15 @@ và dữ liệu vẫn dùng đường dẫn từ gốc repo như trong các ví 
 
 ## Checkpoint 0 — Chuẩn bị môi trường
 
-- **Làm:** theo [README.md](../README.md), cài dependencies và chạy `make smoke`.
+- **Làm:** fork repo đề bài về tài khoản cá nhân, bắt buộc đổi tên fork thành
+  `K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab`, rồi clone theo [README.md](../README.md).
+  Cài dependencies và chạy `make smoke`.
   Trên PowerShell dùng `.\.venv\Scripts\python.exe scripts/verify_lite.py`.
 - **Sản phẩm:** môi trường Python và output smoke test thành công.
 - **Cần hiểu:** Delta/Iceberg là định dạng bảng; DuckDB/Polars là công cụ đọc và xử lý.
   Đường lightweight không cần mạng khi thực thi sau khi cài dependencies.
-- **Tự kiểm tra:** các bước smoke đều PASS; xác định được nơi lưu `_lakehouse/`.
+- **Tự kiểm tra:** fork có tên đúng mẫu, `git remote -v` cho thấy `origin` trỏ tới fork cá nhân;
+  các bước smoke đều PASS; xác định được nơi lưu `_lakehouse/`.
 
 ## Checkpoint 1 — Delta basics
 
@@ -115,7 +118,8 @@ và dữ liệu vẫn dùng đường dẫn từ gốc repo như trong các ví 
 - **Sản phẩm:** 8 `.ipynb` có output trong `submission/notebooks/`, screenshots,
   reflection và thông tin người nộp.
 - **Cần hiểu:** `run_all.py` chạy scripts để kiểm tra, không lưu output vào `.ipynb`.
-- **Tự kiểm tra:** xem `git status` và repo đã push; các file bài nộp phải hiện trên GitHub,
+- **Tự kiểm tra:** fork cá nhân có tên đúng mẫu và `origin` trỏ tới fork đó.
+  Xem `git status` và repo đã push; các file bài nộp phải hiện trên GitHub,
   không chỉ tồn tại trên máy. Đối chiếu từng tiêu chí [RUBRIC.md](RUBRIC.md).
 
 ## Nguồn đối chiếu cho NB8

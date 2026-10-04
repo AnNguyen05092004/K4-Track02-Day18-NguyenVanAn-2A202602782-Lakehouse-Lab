@@ -175,6 +175,7 @@ The first sketch is always wrong. The second one is the work.
 
 Submit your individual brief at `submission/bonus/ARCHITECTURE.md` in the same
 repository/PR as the required work.
-Repository: `K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab`.
+Use your personal fork of the assignment repository, **renamed to**
+`K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab`. Keep bonus work in the same fork as the required work.
 PR title: `[K4-Track02-Day18] HoVaTen - MSSV - Lakehouse Lab [+bonus]`.
 See [SUBMISSION.md](../SUBMISSION.md) for the destination, deadline and checklist.

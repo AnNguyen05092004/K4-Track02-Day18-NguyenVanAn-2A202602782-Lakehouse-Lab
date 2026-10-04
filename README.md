@@ -35,9 +35,26 @@ không JVM, không tải model, không tải DuckDB extension. Setup lần đầ
 
 ## Quick Start
 
+1. **Fork** [repo đề bài](https://github.com/VinUni-AI20k/K4-Track02-Day18-Lakehouse-Lab)
+   về tài khoản GitHub cá nhân.
+2. **Bắt buộc đổi tên fork** thành `K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab`.
+   Họ tên viết không dấu, không khoảng trắng; dùng MSSV của chính bạn.
+   Ví dụ: `K4-Track02-Day18-NguyenVanAn-20260001-Lakehouse-Lab`.
+   Nếu đã fork với tên gốc, đổi tên repository trên GitHub trước khi clone.
+3. Clone fork đã đổi tên. Thay `TEN_GITHUB`, `HoVaTen` và `MSSV` bằng thông tin của bạn:
+
 ```bash
-git clone https://github.com/VinUni-AI20k/K4-Track02-Day18-Lakehouse-Lab.git
-cd K4-Track02-Day18-Lakehouse-Lab
+git clone https://github.com/TEN_GITHUB/K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab.git
+cd K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab
+git remote -v
+```
+
+**Kiểm tra:** `origin` phải trỏ tới fork cá nhân có tên đúng mẫu trên.
+Đổi tên thư mục trên máy không thay thế việc đổi tên repository trên GitHub.
+Nếu đã clone trước khi đổi tên, cập nhật `origin` theo [SUBMISSION.md](docs/SUBMISSION.md#1-fork-và-đặt-tên-repo).
+Chạy các lệnh cài đặt sau từ thư mục gốc fork:
+
+```bash
 make setup      # tạo venv và cài dependencies; lần đầu có thể mất vài phút
 make smoke      # 9 checks, offline sau khi cài dependencies
 make data       # Bronze cho NB4

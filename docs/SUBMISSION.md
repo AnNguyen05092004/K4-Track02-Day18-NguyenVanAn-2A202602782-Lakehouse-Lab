@@ -6,10 +6,10 @@ tự thực thi notebook, giữ output và giải thích kết quả. Không n�
 Các lệnh và đường dẫn bài nộp trong tài liệu được tính từ **thư mục gốc repo**,
 không phải từ thư mục `docs/`.
 
-## 1. Tên repo
+## 1. Fork và đặt tên repo
 
 Repo đề bài: [K4-Track02-Day18-Lakehouse-Lab](https://github.com/VinUni-AI20k/K4-Track02-Day18-Lakehouse-Lab).
-Repo bài nộp đặt theo mẫu:
+Mỗi học viên **fork repo đề bài về tài khoản GitHub cá nhân** và **bắt buộc đổi tên fork** theo mẫu:
 
 ```text
 K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab
@@ -22,8 +22,30 @@ K4-Track02-Day18-NguyenVanAn-20260001-Lakehouse-Lab
 ```
 
 Họ tên viết không dấu, không khoảng trắng; ngăn cách các phần bằng `-`.
-Giữ nguyên mã `K4-Track02-Day18`, dùng MSSV của chính bạn. Có thể fork repo gốc
-rồi đổi tên fork theo mẫu trên; repo upstream vẫn là repo đề bài liên kết ở trên.
+Giữ nguyên mã `K4-Track02-Day18` và hậu tố `Lakehouse-Lab`, dùng MSSV của chính bạn.
+`HoVaTen` là họ tên, còn `TEN_GITHUB` trong URL là tên tài khoản GitHub.
+
+1. Mở repo đề bài và chọn **Fork** vào tài khoản cá nhân.
+2. Đặt tên fork đúng mẫu ngay khi tạo. Nếu fork đã có tên gốc,
+   đổi tên repository trên GitHub trước khi clone; đổi tên thư mục trên máy không đủ.
+3. Clone fork đã đổi tên. Thay các placeholder bằng thông tin của bạn:
+
+```bash
+git clone https://github.com/TEN_GITHUB/K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab.git
+cd K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab
+git remote -v
+```
+
+**Kiểm tra:** URL `origin` thuộc tài khoản của bạn và có tên repository đúng mẫu.
+Repo upstream vẫn là repo đề bài liên kết ở trên; bài làm được push lên fork cá nhân.
+
+Nếu đã clone trước khi đổi tên fork, chạy trong repo bài làm để cập nhật remote
+(thay các placeholder trước khi chạy):
+
+```bash
+git remote set-url origin https://github.com/TEN_GITHUB/K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab.git
+git remote -v
+```
 
 ## 2. Cấu trúc bài phải nộp
 
@@ -116,7 +138,8 @@ Các kiểm tra lightweight vẫn dùng để xác nhận môi trường và ph�
 
 Checklist:
 
-- [ ] Tên repo đúng mẫu, `INFO.md` có họ tên và MSSV.
+- [ ] Đã fork vào tài khoản cá nhân và đổi tên fork đúng mẫu; `origin` trỏ tới fork đó.
+- [ ] `INFO.md` có họ tên và MSSV khớp tên repo.
 - [ ] Có đủ 8 `.ipynb` đã chạy; không có lỗi chưa xử lý hoặc output giả.
 - [ ] Có ảnh và phần giải thích cho từng notebook; đối chiếu các ngưỡng trong rubric.
 - [ ] Reflection không quá 200 từ, có khai phạm vi dùng AI khi áp dụng.

@@ -174,6 +174,7 @@ Bản sketch đầu tiên luôn sai. Bản thứ hai mới là *the work*.
 ## Submission
 
 Nộp bài cá nhân tại `submission/bonus/ARCHITECTURE.md` trong cùng repo/PR với phần bắt buộc.
-Tên repo: `K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab`.
+Dùng fork cá nhân của repo đề bài, bắt buộc đổi tên thành
+`K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab`; bonus nằm trong fork đã dùng cho phần bắt buộc.
 Tiêu đề PR: `[K4-Track02-Day18] HoVaTen - MSSV - Lakehouse Lab [+bonus]`.
 Nơi nộp, deadline và checklist tại [SUBMISSION.md](../SUBMISSION.md).

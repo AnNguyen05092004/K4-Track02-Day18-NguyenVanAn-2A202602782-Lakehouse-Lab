@@ -122,7 +122,9 @@ The provenance mapping is illustrative and has known limitations described in
 
 ## Submission
 
-Follow [SUBMISSION.md](SUBMISSION.md) for repository naming, executed notebooks,
+Fork the assignment repository into your personal GitHub account and **rename the fork**
+to `K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab` before cloning.
+Follow [SUBMISSION.md](SUBMISSION.md) for the naming details, executed notebooks,
 screenshots and individual reflection. Both required work and bonus are individual. Each notebook criterion
 needs output showing the required measurement and an explanation of what it means.
 

@@ -20,7 +20,9 @@ hoặc bỏ assertion/hạ ngưỡng để báo PASS. Khi sửa mã, giữ tiêu
 thu thập bằng chứng và viết giải thích/reflection. Không nộp notebook có output hoặc reflection
 của người khác như bài của mình. Dẫn nguồn khi dùng đoạn mã, tài liệu hoặc ý tưởng bên ngoài.
 
-Mỗi học viên nộp repo riêng; không nộp một repo chung thay cho nhiều người.
+Mỗi học viên fork repo đề bài về tài khoản cá nhân và bắt buộc đổi tên fork thành
+`K4-Track02-Day18-HoVaTen-MSSV-Lakehouse-Lab` theo [SUBMISSION.md](SUBMISSION.md).
+Mỗi học viên nộp fork riêng; không nộp một repo chung thay cho nhiều người.
 Sao chép không khai báo và bằng chứng giả được chuyển cho key coach
 xử lý theo quy định khóa học; không mặc định một mức phạt chưa được công bố.
 
