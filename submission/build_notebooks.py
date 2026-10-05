@@ -346,6 +346,7 @@ def build(prefix: str) -> Path:
     src = next(NB_DIR.glob(f"{prefix}_*.py"))
     nb = jupytext.read(src)
     nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
+    nb.metadata.pop("jupytext", None)  # bỏ cấu hình ghép cặp .py: nếu giữ, Jupyter báo "Unable to read paired notebook"
 
     for anchor, cells in INSERTS.get(prefix, []):
         idx = next((i for i, c in enumerate(nb.cells)
