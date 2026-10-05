@@ -241,7 +241,10 @@ does the directory pass. Verify it, or run the diff yourself:
 # %%
 def find_orphans(table_path: str, min_age_hours: int = 24) -> list[str]:
     """Files on disk that no live snapshot references, older than the guard."""
-    referenced = {os.path.realpath(u.replace("file://", ""))
+    # file_uris() percent-encodes the path ("VIN AI" -> "VIN%20AI"); unquote it, otherwise on a
+    # path containing a space EVERY live file looks unreferenced and only the age guard saves it.
+    from urllib.parse import unquote
+    referenced = {os.path.realpath(unquote(u.replace("file://", "")))
                   for u in DeltaTable(table_path).file_uris()}
     cutoff = time.time() - min_age_hours * 3600
     orphans = []
